@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
-	"os/exec"
 	"path"
 )
 
@@ -36,24 +37,20 @@ func main() {
 			os.Exit(1)
 		}
 
-		cmd := exec.Command("docker", "run", "-i", "koderunr", ext, string(ctx))
-		stdout, err := cmd.StdoutPipe()
-		stderr, err := cmd.StderrPipe()
+		// TODO: Deal with the HTTP timeout
+		resp, err := http.PostForm("http://127.0.0.1:8080/",
+			url.Values{"lang": {ext}, "source": {string(ctx)}})
 
-		go func() {
-			if _, err := io.Copy(os.Stdout, stdout); err != nil {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+
+		if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
+			if err != io.EOF {
 				fmt.Fprintf(os.Stdout, "Error: %v", err)
 			}
-		}()
-
-		go func() {
-			if _, err := io.Copy(os.Stdout, stderr); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v", err)
-			}
-		}()
-
-		cmd.Start()
-		cmd.Wait()
-		// fmt.Scanf("Press Anykey to continue")
+		}
 	}
 }

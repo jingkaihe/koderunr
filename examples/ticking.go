@@ -10,7 +10,7 @@ func main() {
 	i := 0
 	for now := range c {
 		fmt.Printf("%v %d\n", now, i)
-		if i == 10 {
+		if i == 3 {
 			break
 		}
 		i++
