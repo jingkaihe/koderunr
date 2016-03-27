@@ -25,7 +25,7 @@ func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
 	value, err := redis.Bytes(conn.Do("GET", uuid))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: cannot GET: %v\n", err)
-		http.Error(w, "Internal error.\n", 500)
+		http.Error(w, "The source code doesn't exist", 422)
 		return
 	}
 	runner := &Runner{}
