@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 // Runner runs the code
@@ -36,7 +37,7 @@ func (r *Runner) Run(w http.ResponseWriter, isEvtStream bool) {
 
 	// Doing the streaming
 	go func() {
-		buffer := make([]byte, 256)
+		buffer := make([]byte, 1024)
 		for {
 			n, err := pipeReader.Read(buffer)
 			if err != nil {
@@ -50,7 +51,20 @@ func (r *Runner) Run(w http.ResponseWriter, isEvtStream bool) {
 			data := buffer[0:n]
 
 			if isEvtStream == true {
-				fmt.Fprintf(w, "data: %s\n", string(data))
+				// To make event source comfort.
+				// From http://www.html5rocks.com/en/tutorials/eventsource/basics/
+				// If your message is longer, you can break it up by using multiple "data:" lines.
+				// Two or more consecutive lines beginning with "data:" will be treated as a single
+				// piece of data, meaning only one message event will be fired. Each line should
+				// end in a single "\n" (except for the last, which should end with two). The result
+				// passed to your message handler is a single string concatenated by newline characters.
+				s := string(data)
+				lines := strings.Split(s, "\n")
+				for i, line := range lines {
+					lines[i] = "data: " + line
+				}
+				s = strings.Join(lines, "\n")
+				fmt.Fprintf(w, "%s\n\n", s)
 			} else {
 				w.Write(data)
 			}

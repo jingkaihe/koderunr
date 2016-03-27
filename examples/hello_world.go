@@ -1,7 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func main() {
-	fmt.Println("Hello world")
+	for i := 0; i < 100; i++ {
+		fmt.Println(i)
+	}
 }
