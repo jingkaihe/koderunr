@@ -33,6 +33,12 @@ func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
 
 	isEvtStream := r.FormValue("evt") == "true"
 	runner.Run(w, isEvtStream)
+
+	// Purge the source code
+	_, err = conn.Do("DEL", uuid)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Failed to purge the source code for %s - %v", uuid, err)
+	}
 }
 
 func (s *Server) handleReg(w http.ResponseWriter, r *http.Request) {
