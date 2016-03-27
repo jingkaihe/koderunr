@@ -60,7 +60,7 @@ func (r *runner) fetchUUID() error {
 
 func (r *runner) run() error {
 	// TODO: Build the URI in a classy way
-	resp, err := http.Get(endpoint + "?uuid=" + r.uuid)
+	resp, err := http.Get(endpoint + "run?uuid=" + r.uuid)
 	defer resp.Body.Close()
 
 	if err != nil {

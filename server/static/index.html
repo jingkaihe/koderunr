@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <style type="text/css" media="screen">
+      #content {
+        width: 100%;
+      }
+      #editor {
+        position: fixed;
+        float: left;
+        width: 100%;
+        height: 70%;
+      }
+      #result {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        height: 27%;
+        padding-top: 100px;
+      }
+      #streamingResult{
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <title>Koderunr - Running code everywhere!</title>
+    <div id="content">
+<div id="editor">package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	c := time.Tick(1 * time.Second)
+	i := 0
+	for now := range c {
+		fmt.Printf("%v %d\n", now, i)
+		if i == 3 {
+			break
+		}
+		i++
+	}
+}
+</div>
+    <div id="result">
+      <button id="submitCode">Submit code</button>
+      <hr />
+      <textarea id="streamingResult"></textarea>
+    </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+
+    <script>
+      var editor = ace.edit("editor");
+      editor.setTheme("ace/theme/monokai");
+      editor.getSession().setMode("ace/mode/golang");
+    </script>
+
+    <script>
+    $( document ).ready(function() {
+      $("#submitCode").on("click", function(e){
+        var editor = ace.edit("editor");
+        var sourceCode = editor.getValue();
+
+        $.post('/register/', { ext: ".go", source: sourceCode }, function(msg) {
+          var evtSource = new EventSource("/run?uuid=" + msg);
+          evtSource.onmessage = function(e) {
+            var text = $("#streamingResult").text();
+            $("#streamingResult").text(text + e.data + "\n");
+          }
+        });
+      })
+    });
+    </script>
+  </body>
+</html>

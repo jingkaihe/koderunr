@@ -50,7 +50,6 @@ func (s *Server) handleReg(w http.ResponseWriter, r *http.Request) {
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	// conn.Do("SET", 123, 45678)
 	_, err := conn.Do("SET", uuid, strj)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -73,7 +72,9 @@ func main() {
 	s := &Server{
 		redisPool: redisPool,
 	}
-	http.HandleFunc("/", s.handleRunCode)
+
+	http.Handle("/", http.FileServer(http.Dir("static")))
+	http.HandleFunc("/run", s.handleRunCode)
 	http.HandleFunc("/register/", s.handleReg)
 	http.ListenAndServe(":8080", nil)
 }

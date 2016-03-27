@@ -16,7 +16,15 @@ type Runner struct {
 
 // Run the code in the container
 func (r *Runner) Run(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/octet-stream")
+	f, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "The server does not support streaming!", http.StatusInternalServerError)
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	cmd := exec.Command("docker", "run", "-i", "koderunr", r.Ext, r.Source)
 
 	pipeReader, pipeWriter := io.Pipe()
@@ -40,11 +48,9 @@ func (r *Runner) Run(w http.ResponseWriter) {
 			}
 
 			data := buffer[0:n]
-			w.Write(data)
+			fmt.Fprintf(w, "data: %s\n", string(data))
 
-			if f, ok := w.(http.Flusher); ok {
-				f.Flush()
-			}
+			f.Flush()
 
 			for i := 0; i < n; i++ {
 				buffer[i] = 0
