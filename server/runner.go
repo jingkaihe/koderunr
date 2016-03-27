@@ -15,7 +15,7 @@ type Runner struct {
 }
 
 // Run the code in the container
-func (r *Runner) Run(w http.ResponseWriter) {
+func (r *Runner) Run(w http.ResponseWriter, isEvtStream bool) {
 	f, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "The server does not support streaming!", http.StatusInternalServerError)
@@ -48,7 +48,12 @@ func (r *Runner) Run(w http.ResponseWriter) {
 			}
 
 			data := buffer[0:n]
-			fmt.Fprintf(w, "data: %s\n", string(data))
+
+			if isEvtStream == true {
+				fmt.Fprintf(w, "data: %s\n", string(data))
+			} else {
+				w.Write(data)
+			}
 
 			f.Flush()
 

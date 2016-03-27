@@ -31,7 +31,8 @@ func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
 	runner := &Runner{}
 	json.Unmarshal(value, runner)
 
-	runner.Run(w)
+	isEvtStream := r.FormValue("evt") == "true"
+	runner.Run(w, isEvtStream)
 }
 
 func (s *Server) handleReg(w http.ResponseWriter, r *http.Request) {

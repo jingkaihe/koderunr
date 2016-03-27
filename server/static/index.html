@@ -75,7 +75,7 @@ func main() {
         var sourceCode = editor.getValue();
 
         $.post('/register/', { ext: ".go", source: sourceCode }, function(msg) {
-          var evtSource = new EventSource("/run?uuid=" + msg);
+          var evtSource = new EventSource("/run?evt=true&uuid=" + msg);
           evtSource.onmessage = function(e) {
             var text = $("#streamingResult").text();
             $("#streamingResult").text(text + e.data + "\n");
