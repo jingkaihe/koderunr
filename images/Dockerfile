@@ -9,8 +9,6 @@ RUN add-apt-repository ppa:ubuntu-lxc/lxd-stable -y
 RUN apt-get update -y
 RUN apt-get install golang -y
 
-COPY entrypoint.sh /
-
 # Install Ruby
 RUN apt-get install python-software-properties -y
 RUN apt-get install build-essential git-core wget -y
@@ -29,12 +27,13 @@ RUN echo 'gem: --no-rdoc --no-ri' >> /.gemrc
 RUN rbenv install 2.3.0
 RUN rbenv global 2.3.0
 RUN rbenv rehash
-ENV PATH $RBENV_PATH/shims:$PATH
+ENV PATH /root/.rbenv/shims:$PATH
 
 # Tidy up
 RUN apt-get clean
 
 # Entry point
+COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

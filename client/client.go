@@ -12,13 +12,6 @@ import (
 
 const endpoint = "http://127.0.0.1:8080/"
 
-func isGoProg(args []string) bool {
-	if len(args) != 3 {
-		return false
-	}
-	return args[0] == "go" && args[1] == "run"
-}
-
 type runner struct {
 	ext    string
 	source string
@@ -26,11 +19,7 @@ type runner struct {
 }
 
 func newRunner(fName string) (r *runner, err error) {
-
 	ext := path.Ext(fName)
-	if ext != ".go" {
-		err = fmt.Errorf("the File extension %s is not go", ext)
-	}
 
 	ctx, err := ioutil.ReadFile(fName)
 
@@ -77,12 +66,14 @@ func (r *runner) run() error {
 }
 
 // examples:
-//   $ koderunr go run main.go
-//   $ koderunr ruby hello.rb
+//   $ koderunr run main.go
+//   $ koderunr run hello.rb
 func main() {
 	args := os.Args[1:]
-	if isGoProg(args) {
-		fName := args[2]
+	op := args[0]
+
+	if op == "run" {
+		fName := args[1]
 
 		rnr, err := newRunner(fName)
 		if err != nil {
