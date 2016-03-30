@@ -8,8 +8,8 @@ import (
 func main() {
 	c := time.Tick(1 * time.Second)
 	i := 0
-	for now := range c {
-		fmt.Printf("%v %d\n", now, i)
+	for range c {
+		fmt.Printf("Bazinga %d!\n", i)
 		if i == 3 {
 			break
 		}
