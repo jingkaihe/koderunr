@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -34,11 +33,11 @@ func newRunner(fName string) (r *Runner, err error) {
 func (r *Runner) fetchUUID() error {
 	resp, err := http.PostForm(endpoint+"register/",
 		url.Values{"ext": {r.ext}, "source": {string(r.source)}})
-	defer resp.Body.Close()
-
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
@@ -51,11 +50,10 @@ func (r *Runner) fetchUUID() error {
 func (r *Runner) run() error {
 	// TODO: Build the URI in a classy way
 	resp, err := http.Get(endpoint + "run?uuid=" + r.uuid)
-	defer resp.Body.Close()
-
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
 		if err != io.EOF {
@@ -64,30 +62,4 @@ func (r *Runner) run() error {
 	}
 
 	return nil
-}
-
-// examples:
-//   $ koderunr run main.go
-//   $ koderunr run hello.rb
-func main() {
-	args := os.Args[1:]
-	op := args[0]
-
-	if op == "run" {
-		fName := args[1]
-
-		runner, err := newRunner(fName)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-
-		err = runner.fetchUUID()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-
-		runner.run()
-	}
 }
