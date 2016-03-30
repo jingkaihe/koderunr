@@ -6,6 +6,11 @@ case "$1" in
     touch runner.go
     echo "$2" > runner.go
     go run runner.go ;;
+  ".c" )
+    touch runner.c
+    echo "$2" > runner.c
+    cc runner.c
+    ./a.out ;;
   ".rb" )
     touch runner.rb
     echo "$2" > runner.rb
