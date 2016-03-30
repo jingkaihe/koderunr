@@ -2,6 +2,10 @@ $(function() {
   var KodeRunr = function(ext){
     this.editor = ace.edit("editor");
     this.editor.setTheme("ace/theme/monokai");
+    this.editor.setOptions({
+      fontFamily: "tahoma",
+      fontSize: "12pt"
+    });
 
     this.setExt(ext);
   }
@@ -25,7 +29,7 @@ $(function() {
       var evtSource = new EventSource("/run?evt=true&uuid=" + msg);
       evtSource.onmessage = function(e) {
         var text = $("#streamingResult").text();
-        $("#streamingResult").text(text + e.data + "\n");
+        $("#streamingResult").text(text + e.data);
       }
     });
   };
