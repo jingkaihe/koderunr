@@ -12,25 +12,26 @@ import (
 
 const endpoint = "http://127.0.0.1:8080/"
 
-type runner struct {
+// Runner contains the code to be run
+type Runner struct {
 	ext    string
 	source string
 	uuid   string
 }
 
-func newRunner(fName string) (r *runner, err error) {
+func newRunner(fName string) (r *Runner, err error) {
 	ext := path.Ext(fName)
 
 	ctx, err := ioutil.ReadFile(fName)
 
-	r = &runner{
+	r = &Runner{
 		ext:    ext,
 		source: string(ctx),
 	}
 	return
 }
 
-func (r *runner) fetchUUID() error {
+func (r *Runner) fetchUUID() error {
 	resp, err := http.PostForm(endpoint+"register/",
 		url.Values{"ext": {r.ext}, "source": {string(r.source)}})
 	defer resp.Body.Close()
@@ -47,7 +48,7 @@ func (r *runner) fetchUUID() error {
 	return nil
 }
 
-func (r *runner) run() error {
+func (r *Runner) run() error {
 	// TODO: Build the URI in a classy way
 	resp, err := http.Get(endpoint + "run?uuid=" + r.uuid)
 	defer resp.Body.Close()
@@ -75,18 +76,18 @@ func main() {
 	if op == "run" {
 		fName := args[1]
 
-		rnr, err := newRunner(fName)
+		runner, err := newRunner(fName)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		err = rnr.fetchUUID()
+		err = runner.fetchUUID()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		rnr.run()
+		runner.run()
 	}
 }
