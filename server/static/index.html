@@ -56,6 +56,13 @@ func main() {
 
 </div>
     <div id="result">
+      <span>Lang:&nbsp;</span>
+      <select id="ext">
+        <option value=".go">Go</option>
+        <option value=".rb">Ruby</option>
+      </select>
+
+      <span>&nbsp;&nbsp;&nbsp;</span>
       <button id="submitCode">Run code!</button>
       <hr />
       <textarea readonly id="streamingResult"></textarea>
@@ -64,30 +71,6 @@ func main() {
 
     <script src="vendors/js/ace/ace.js"></script>
     <script src="vendors/js/jquery.min.js"></script>
-
-    <script>
-      var editor = ace.edit("editor");
-      editor.setTheme("ace/theme/monokai");
-      editor.getSession().setMode("ace/mode/golang");
-    </script>
-
-    <script>
-    $( document ).ready(function() {
-      $("#submitCode").on("click", function(e){
-        var editor = ace.edit("editor");
-        var sourceCode = editor.getValue();
-
-        $.post('/register/', { ext: ".go", source: sourceCode }, function(msg) {
-          // Empty the output field
-          $("#streamingResult").text("");
-          var evtSource = new EventSource("/run?evt=true&uuid=" + msg);
-          evtSource.onmessage = function(e) {
-            var text = $("#streamingResult").text();
-            $("#streamingResult").text(text + e.data + "\n");
-          }
-        });
-      })
-    });
-    </script>
+    <script src="js/app.js"></script>
   </body>
 </html>
