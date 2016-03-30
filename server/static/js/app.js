@@ -3,8 +3,7 @@ $(function() {
     this.editor = ace.edit("editor");
     this.editor.setTheme("ace/theme/monokai");
     this.editor.setOptions({
-      fontFamily: "tahoma",
-      fontSize: "12pt"
+      fontSize: "12pt",
     });
 
     this.setExt(ext);

@@ -10,6 +10,10 @@ case "$1" in
     touch runner.rb
     echo "$2" > runner.rb
     ruby runner.rb ;;
+  ".py" )
+    touch runner.py
+    echo "$2" > runner.py
+    python runner.py ;;
   * )
     exec "$@"
 esac
