@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -9,7 +10,11 @@ import (
 	"path"
 )
 
-const endpoint = "http://127.0.0.1:8080/"
+var endpoint string
+
+func init() {
+	flag.StringVar(&endpoint, "Endpoint", "http://127.0.0.1:8080/", "The endpoint of the API that will run the code")
+}
 
 // Runner contains the code to be run
 type Runner struct {
