@@ -12,33 +12,21 @@
   <body>
     <title>Koderunr - Running code everywhere!</title>
     <div id="content">
-<div id="editor">package main
+<div id="editor">puts "Ruby Version: #{RUBY_VERSION}"
 
-import (
-	"fmt"
-	"time"
-)
-
-func main() {
-	c := time.Tick(1 * time.Second)
-	i := 0
-	for range c {
-		fmt.Printf("Bazinga %d!\n", i)
-		if i == 3 {
-			break
-		}
-		i++
-	}
-}
-
+3.times do |i|
+  puts "hello world - #{i}"
+  STDOUT.flush
+  sleep 1
+end
 </div>
     <div id="result">
       <span>Lang:&nbsp;</span>
       <select id="ext">
-        <option value=".go">Go</option>
-        <option value=".c">C</option>
         <option value=".rb">Ruby 2.3.0</option>
         <option value=".rb 1.9.3-p550">Ruby 1.9.3-p550</option>
+        <option value=".go">Go</option>
+        <option value=".c">C</option>
         <option value=".py">Python</option>
       </select>
 
