@@ -26,6 +26,7 @@ func (r *Runner) Run(w http.ResponseWriter, isEvtStream bool) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("X-Accel-Buffering", "no")
 
 	execArgs := []string{"run", "-i", "koderunr", r.Ext, r.Source}
 
