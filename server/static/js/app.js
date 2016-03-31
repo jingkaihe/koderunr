@@ -23,7 +23,11 @@ $(function() {
   KodeRunr.prototype.runCode = function(evt) {
     var sourceCode = this.editor.getValue();
 
-    $.post('/register/', { ext: this.ext, source: sourceCode }, function(msg) {
+    var runnable = { ext: this.ext, source: sourceCode };
+    if (this.version) {
+      runnable.version = this.version
+    }
+    $.post('/register/', runnable, function(msg) {
       // Empty the output field
       $("#streamingResult").text("");
       var evtSource = new EventSource("/run?evt=true&uuid=" + msg);
@@ -42,7 +46,10 @@ $(function() {
     // Empty the screen
     runner.editor.setValue("", undefined);
     $("#streamingResult").text("");
-    console.log(this.value);
-    runner.setExt(this.value);
+
+    var [ext, version] = this.value.split(" ")
+    runner.setExt(ext);
+
+    runner.version = version
   })
 });

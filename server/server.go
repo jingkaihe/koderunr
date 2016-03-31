@@ -46,6 +46,7 @@ func (s *Server) handleReg(w http.ResponseWriter, r *http.Request) {
 	runner := Runner{
 		r.FormValue("ext"),
 		r.FormValue("source"),
+		r.FormValue("version"),
 	}
 
 	bts, _ := json.Marshal(&runner)

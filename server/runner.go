@@ -11,8 +11,9 @@ import (
 
 // Runner runs the code
 type Runner struct {
-	Ext    string `json:"ext"`
-	Source string `json:"source"`
+	Ext     string `json:"ext"`
+	Source  string `json:"source"`
+	Version string `json:"version"`
 }
 
 // Run the code in the container
@@ -26,7 +27,13 @@ func (r *Runner) Run(w http.ResponseWriter, isEvtStream bool) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	cmd := exec.Command("docker", "run", "-i", "koderunr", r.Ext, r.Source)
+	execArgs := []string{"run", "-i", "koderunr", r.Ext, r.Source}
+
+	if r.Version != "" {
+		execArgs = append(execArgs, r.Version)
+	}
+
+	cmd := exec.Command("docker", execArgs...)
 
 	pipeReader, pipeWriter := io.Pipe()
 	defer pipeWriter.Close()

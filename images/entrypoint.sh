@@ -12,6 +12,10 @@ case "$1" in
     cc runner.c
     ./a.out ;;
   ".rb" )
+    if [[ -n "$3" ]]; then
+      rbenv global $3
+    fi
+
     touch runner.rb
     echo "$2" > runner.rb
     ruby runner.rb ;;
