@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -67,6 +68,13 @@ func (s *Server) handleReg(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, uuid)
 }
 
+var servingStatic bool
+
+func init() {
+	flag.BoolVar(&servingStatic, "static", false, "if using Go server hosting static files")
+	flag.Parse()
+}
+
 func main() {
 	redisPool := redis.NewPool(func() (redis.Conn, error) {
 		conn, err := redis.Dial("tcp", ":6379")
@@ -74,13 +82,16 @@ func main() {
 			return nil, err
 		}
 		return conn, err
-	}, 5)
+	}, 4)
 
 	s := &Server{
 		redisPool: redisPool,
 	}
 
-	http.Handle("/", http.FileServer(http.Dir("static")))
+	if servingStatic {
+		http.Handle("/", http.FileServer(http.Dir("static")))
+	}
+
 	http.HandleFunc("/run", s.handleRunCode)
 	http.HandleFunc("/register/", s.handleReg)
 	http.ListenAndServe(":8080", nil)
