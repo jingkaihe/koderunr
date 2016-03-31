@@ -37,7 +37,7 @@ func (r *Runner) Run(w http.ResponseWriter, isEvtStream bool) {
 
 	pipeReader, pipeWriter := io.Pipe()
 	defer pipeWriter.Close()
-	defer pipeWriter.Close()
+	defer pipeReader.Close()
 
 	cmd.Stdout = pipeWriter
 	cmd.Stderr = pipeWriter
