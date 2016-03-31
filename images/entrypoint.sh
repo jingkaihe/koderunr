@@ -23,6 +23,4 @@ case "$1" in
     touch runner.py
     echo "$2" > runner.py
     python runner.py ;;
-  * )
-    exec "$@"
 esac
