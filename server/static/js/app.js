@@ -38,12 +38,22 @@ $(function() {
     });
   };
 
+  var sourceCodeCache = sourceCodeCache || {};
+  sourceCodeCache.fetch = function(runner) {
+    return localStorage.getItem(runner.ext)
+  }
+
+  sourceCodeCache.store = function(runner){
+    localStorage.setItem(runner.ext, runner.editor.getValue())
+  }
+
   var runner = new KodeRunr($("#ext").val());
 
   $("#submitCode").on("click", runner.runCode.bind(runner));
 
   $("#ext").on("change", function() {
     // Empty the screen
+    sourceCodeCache.store(runner)
     runner.editor.setValue("", undefined);
     $("#streamingResult").text("");
 
@@ -51,5 +61,10 @@ $(function() {
     runner.setExt(ext);
 
     runner.version = version
+
+    var cachedSourceCode = sourceCodeCache.fetch(runner)
+    if (cachedSourceCode) {
+      runner.editor.setValue(cachedSourceCode, 1);
+    }
   })
 });
