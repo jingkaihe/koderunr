@@ -19,10 +19,15 @@ task :build do
   TARGETS.each do |target|
     build(target)
   end
+
+  ok = system("tar -zcvf ./build/kode-#{VERSION}.tar.gz ./build/*")
+
+  puts "Build successfully!" if ok
 end
 
 def build(target)
   puts " *** #{target[:os]} - #{target[:arch]} ***"
+
   path = "./build/#{target[:os]}/#{target[:arch]}/kode"
   ldflags = "-X=main.Version=#{VERSION}"
   args = ["-o", "#{path}", "-ldflags", "\"#{ldflags}\""]
@@ -34,6 +39,4 @@ def build(target)
   ok = system("#{vars.join(' ')} go build #{args.join(' ')}")
 
   exit 1 unless ok
-
-
 end
