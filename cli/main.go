@@ -1,32 +1,23 @@
 package main
 
 import (
-	"fmt"
 	"os"
+
+	"github.com/jaxi/koderunr/cli/commands"
 )
 
-// examples:
-//   $ kode run main.go
-//   $ kode run hello.rb
 func main() {
 	args := os.Args[1:]
-	op := args[0]
 
-	if op == "run" {
-		fName := args[1]
+	cli := commands.NewCLI(
+		"kode",
+		"0.0.1 Beta",
+		"Kode - Running code without install the programming language!",
+	)
 
-		runner, err := newRunner(fName)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-
-		err = runner.fetchUUID()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-
-		runner.run()
+	cli.Cmds = map[string]commands.Command{
+		"run": commands.Run{},
 	}
+
+	cli.Exec(args)
 }
