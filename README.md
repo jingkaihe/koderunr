@@ -58,9 +58,9 @@ $ kode run foo.rb -v 2.2.0 # Running foo.rb using ruby 2.2.0
 
 - [x] ~~Support more languages (e.g. C, python, ruby, Erlang), at the moment only Go is supported.~~ Now supporting Go, C, ruby, python.
 - [ ] Running the Docker containers in a proper Docker client rather than using system calls, so we can create-attach-run-kill containers automatically. (Currently tidy up the dead containers manually)
-- [ ] Serious CLI support
-- [ ] Cli configuration
-- [ ] Binaries distribution
-- [ ] Web interface that sucks less...
+- [x] Serious cli support
+- [x] cli configuration
+- [x] Binaries distribution
+- [x] Web interface that sucks less...
 - [ ] Server and Docker containers hosting
-- [ ] Support programming language versioning
+- [x] Support programming language versioning
