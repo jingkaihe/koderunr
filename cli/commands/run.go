@@ -49,8 +49,6 @@ func (r Run) Exec(args []string) int {
 	// Parse the version and endpoint from the arguments passed in
 	flagargs := args[1:]
 
-	fmt.Println(flagargs)
-
 	runFlagSet := flag.NewFlagSet("run", flag.ExitOnError)
 	endpointFlag := runFlagSet.String("endpoint", "http://koderunr.tech/api/", "Endpoint of the API")
 	langVersionFlag := runFlagSet.String("version", "", "Version of the language")
