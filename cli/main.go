@@ -6,12 +6,16 @@ import (
 	"github.com/jaxi/koderunr/cli/commands"
 )
 
+// Version is the version of the command line tool
+// Passed in by main.Version
+var Version string
+
 func main() {
 	args := os.Args[1:]
 
 	cli := commands.NewCLI(
 		"kode",
-		"0.0.1 Beta",
+		Version,
 		"Kode - Running code without install the programming language!",
 	)
 

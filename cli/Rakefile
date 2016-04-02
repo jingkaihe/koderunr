@@ -1,0 +1,39 @@
+TARGETS = [
+  {os: 'darwin', arch: 'amd64'},
+  {os: 'linux', arch: 'arm', goarm: '6'},
+  {os: 'linux', arch: 'amd64'},
+  {os: 'linux', arch: '386', go386: '387'},
+  {os: 'openbsd', arch: 'amd64'},
+  {os: 'openbsd', arch: '386'},
+  {os: 'freebsd', arch: 'amd64'},
+  {os: 'freebsd', arch: '386'},
+]
+
+VERSION = `./version`.chomp
+
+desc "build the kode cli"
+task :build do
+  puts "Building #{VERSION} kode cli"
+  FileUtils.mkdir_p "build"
+
+  TARGETS.each do |target|
+    build(target)
+  end
+end
+
+def build(target)
+  puts " *** #{target[:os]} - #{target[:arch]} ***"
+  path = "./build/#{target[:os]}/#{target[:arch]}/kode"
+  ldflags = "-X=main.Version=#{VERSION}"
+  args = ["-o", "#{path}", "-ldflags", "\"#{ldflags}\""]
+
+  vars = ["GOOS=#{target[:os]}", "GOARCH=#{target[:arch]}"]
+  vars << "GO386=#{target[:go386]}" if target[:go386]
+  vars << "GOARM=#{target[:goarm]}" if target[:goarm]
+
+  ok = system("#{vars.join(' ')} go build #{args.join(' ')}")
+
+  exit 1 unless ok
+
+
+end
