@@ -13,7 +13,7 @@ One of the possible approaches is cross-compiling the source and distributing th
 
 Need to find a server. Or argubaly host it on GitHub page?
 
-## Examples (proposal)
+## Examples
 
 Suppose you have a golang file called `main.go`, which has the source
 
@@ -51,7 +51,7 @@ $ kode run main.go # main.go is the file you have locally
 Also you can specified version of the language you want by
 
 ```bash
-$ kode run foo.rb -v 2.2.0 # Running foo.rb using ruby 2.2.0
+$ kode run foo.rb -version=2.3.0 # Running foo.rb using ruby 2.2.0
 ```
 
 ## TODO
