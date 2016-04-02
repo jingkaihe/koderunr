@@ -12,7 +12,7 @@ $(function() {
   KodeRunr.prototype.LANG_MAPPING = {
     ".go": "golang",
     ".rb": "ruby",
-    ".rb": "c_cpp",
+    ".c": "c_cpp",
   };
 
   KodeRunr.prototype.setExt = function(ext) {
