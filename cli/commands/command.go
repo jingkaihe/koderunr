@@ -27,14 +27,19 @@ func NewCLI(app, version, intro string) *CLI {
 }
 
 // Brief give the list of short descriptions of the commands
+// TODO: Need some align - Looks a bit untidy.
 func (cli *CLI) Brief() {
 	fmt.Println()
 	fmt.Println(cli.Intro)
 	fmt.Printf("\nCommands:\n\n")
-	for cmdName, cmd := range cli.Cmds {
-		fmt.Printf("%s - %s\n", cmdName, cmd.ShortDescription())
+
+	fmt.Printf("kode version - The version of the kode client\n\n")
+	fmt.Printf("kode help [cmd] - The usage of the given command\n\n")
+
+	for _, cmd := range cli.Cmds {
+		fmt.Printf("%s\n\n", cmd.ShortDescription())
 	}
-	fmt.Println()
+
 }
 
 // Help Give the usage about how to exec a certain command

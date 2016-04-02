@@ -41,7 +41,7 @@ Examples:
 
 // ShortDescription for the Run command
 func (r Run) ShortDescription() string {
-	return "Run the code remotely on runner and returns the result asynchronously"
+	return "kode run [filename] [options] - Run the code remotely on runner and returns the result asynchronously"
 }
 
 // Exec is the command that will execute the Run command
