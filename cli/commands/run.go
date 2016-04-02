@@ -52,25 +52,34 @@ func (r Run) Exec(args []string) int {
 	fmt.Println(flagargs)
 
 	runFlagSet := flag.NewFlagSet("run", flag.ExitOnError)
-	endpoint := runFlagSet.String("endpoint", "http://127.0.0.1:8080/", "Endpoint of the API")
-	langVersion := runFlagSet.String("version", "", "Version of the language")
+	endpointFlag := runFlagSet.String("endpoint", "http://koderunr.tech/api/", "Endpoint of the API")
+	langVersionFlag := runFlagSet.String("version", "", "Version of the language")
+	debugFlag := runFlagSet.Bool("debug", false, "Debug mode use local endpoint")
 
 	runFlagSet.Parse(flagargs)
 
+	var endpoint string
+
+	if *debugFlag == true {
+		endpoint = client.TestEndPoint
+	} else {
+		endpoint = *endpointFlag
+	}
+
 	// Started running the code
-	runner, err := client.NewRunner(*langVersion, args[0])
+	runner, err := client.NewRunner(*langVersionFlag, args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
 	}
 
-	err = runner.FetchUUID(*endpoint)
+	err = runner.FetchUUID(endpoint)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: Failed to fetch UUID - %v\n", err)
 		return 1
 	}
 
-	err = runner.Run(*endpoint)
+	err = runner.Run(endpoint)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: Failed to execute the code - %v\n", err)
 		return 1
