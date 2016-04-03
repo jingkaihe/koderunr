@@ -36,10 +36,10 @@ func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal(value, runner)
 
 	isEvtStream := r.FormValue("evt") == "true"
-	client := NewClient()
-	go client.Write(w, isEvtStream)
+	client := NewClient(runner)
 
-	runner.Run(client.input, client.output)
+	go client.Write(w, isEvtStream)
+	client.Run()
 
 	// Purge the source code
 	_, err = conn.Do("DEL", uuid)
