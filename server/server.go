@@ -15,6 +15,7 @@ import (
 // Server is the abstraction of a koderunr web api
 type Server struct {
 	redisPool *redis.Pool
+	broker    *Broker
 }
 
 func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
@@ -29,11 +30,16 @@ func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "The source code doesn't exist", 422)
 		return
 	}
+
+	// Started running code
 	runner := &Runner{}
 	json.Unmarshal(value, runner)
 
 	isEvtStream := r.FormValue("evt") == "true"
-	runner.Run(w, isEvtStream)
+	client := NewClient()
+	go client.Write(w, isEvtStream)
+
+	runner.Run(client.input, client.output)
 
 	// Purge the source code
 	_, err = conn.Do("DEL", uuid)
@@ -87,7 +93,10 @@ func main() {
 
 	s := &Server{
 		redisPool: redisPool,
+		broker:    NewBroker(),
 	}
+
+	go s.broker.Start()
 
 	if servingStatic {
 		http.Handle("/", http.FileServer(http.Dir("static")))
