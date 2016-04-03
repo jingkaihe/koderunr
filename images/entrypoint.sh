@@ -13,7 +13,17 @@ case "$1" in
     ./a.out ;;
   ".rb" )
     if [[ -n "$3" ]]; then
-      rbenv global $3
+      rb_version=$3
+      rb_versions=($(cd ~/.rbenv/versions && ls -d */))
+      for version in $rb_versions
+      do
+        if [[ $version == *"$rb_version"* ]]
+        then
+          rb_version=$version
+          break
+        fi
+      done
+      rbenv global $rb_version
     fi
 
     touch runner.rb
