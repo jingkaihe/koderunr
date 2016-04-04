@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 // Runner runs the code
@@ -15,7 +17,7 @@ type Runner struct {
 }
 
 // Run the code in the container
-func (r *Runner) Run(input, output messages) {
+func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	execArgs := []string{"run", "-i", "koderunr", r.Ext, r.Source}
 	if r.Version != "" {
 		execArgs = append(execArgs, r.Version)
@@ -23,20 +25,45 @@ func (r *Runner) Run(input, output messages) {
 
 	cmd := exec.Command("docker", execArgs...)
 
-	pipeReader, pipeWriter := io.Pipe()
-	defer pipeWriter.Close()
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v", err)
+	}
+	defer stdin.Close()
 
-	cmd.Stdout = pipeWriter
-	cmd.Stderr = pipeWriter
+	stdoutReader, stdoutWriter := io.Pipe()
+
+	defer stdoutWriter.Close()
+
+	cmd.Stdout = stdoutWriter
+	cmd.Stderr = stdoutWriter
+
+	go func() {
+		psc := redis.PubSubConn{Conn: conn}
+		psc.Subscribe(uuid + "#stdin")
+		defer psc.Close()
+
+	StdinSubscriptionLoop:
+		for {
+			switch n := psc.Receive().(type) {
+			case redis.Message:
+				fmt.Printf("Message: %s %s\n", n.Channel, n.Data)
+				stdin.Write(n.Data)
+			case error:
+				break StdinSubscriptionLoop
+			}
+		}
+		fmt.Println("Done")
+	}()
 
 	// Doing the streaming
 	go func() {
 		buffer := make([]byte, 512)
 		for {
-			n, err := pipeReader.Read(buffer)
+			n, err := stdoutReader.Read(buffer)
 			if err != nil {
 				if err != io.EOF {
-					pipeReader.Close()
+					stdoutReader.Close()
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				}
 				break

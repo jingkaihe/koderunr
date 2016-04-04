@@ -15,7 +15,6 @@ import (
 // Server is the abstraction of a koderunr web api
 type Server struct {
 	redisPool *redis.Pool
-	broker    *Broker
 }
 
 func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +35,7 @@ func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal(value, runner)
 
 	isEvtStream := r.FormValue("evt") == "true"
-	client := NewClient(runner)
+	client := NewClient(runner, conn, uuid)
 
 	go client.Write(w, isEvtStream)
 	client.Run()
@@ -75,6 +74,18 @@ func (s *Server) handleReg(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, uuid)
 }
 
+func (s *Server) handleStdin(w http.ResponseWriter, r *http.Request) {
+	input := r.FormValue("input")
+	uuid := r.FormValue("uuid")
+
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	conn.Do("PUBLISH", uuid+"#stdin", input)
+
+	fmt.Fprintf(w, "")
+}
+
 var servingStatic bool
 
 func init() {
@@ -93,10 +104,7 @@ func main() {
 
 	s := &Server{
 		redisPool: redisPool,
-		broker:    NewBroker(),
 	}
-
-	go s.broker.Start()
 
 	if servingStatic {
 		http.Handle("/", http.FileServer(http.Dir("static")))
@@ -104,5 +112,6 @@ func main() {
 
 	http.HandleFunc("/run", s.handleRunCode)
 	http.HandleFunc("/register/", s.handleReg)
+	http.HandleFunc("/stdin/", s.handleStdin)
 	http.ListenAndServe(":8080", nil)
 }

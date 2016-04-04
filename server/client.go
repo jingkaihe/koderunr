@@ -4,33 +4,33 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 type messages chan string
 
-// Client is a registed node in Broker
+// Client is a proxy struct registered for running
 type Client struct {
 	runner *Runner
-	input  messages // input to runner
-	output messages // output from runner
+	output messages   // output from runner
+	conn   redis.Conn // redis connection
+	uuid   string
 }
 
 // NewClient creates new client
-func NewClient(r *Runner) *Client {
+func NewClient(r *Runner, conn redis.Conn, uuid string) *Client {
 	return &Client{
-		input:  make(messages),
 		output: make(messages),
 		runner: r,
+		conn:   conn,
+		uuid:   uuid,
 	}
 }
 
 // Run kicks start the container
 func (cli *Client) Run() {
-	cli.runner.Run(cli.input, cli.output)
-}
-
-func (cli *Client) Read(msg string) {
-	cli.input <- msg
+	cli.runner.Run(cli.output, cli.conn, cli.uuid)
 }
 
 // Writing things out
