@@ -35,7 +35,7 @@ func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal(value, runner)
 
 	isEvtStream := r.FormValue("evt") == "true"
-	client := NewClient(runner, conn, uuid)
+	client := NewClient(runner, s.redisPool.Get(), uuid)
 
 	go client.Write(w, isEvtStream)
 	client.Run()
@@ -43,7 +43,7 @@ func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
 	// Purge the source code
 	_, err = conn.Do("DEL", uuid)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: Failed to purge the source code for %s - %v", uuid, err)
+		fmt.Fprintf(os.Stderr, "Error: Failed to purge the source code for %s - %v\n", uuid, err)
 	}
 }
 
