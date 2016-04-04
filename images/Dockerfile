@@ -24,8 +24,14 @@ RUN echo 'eval "$(rbenv init -)"' >> /etc/profile.d/rbenv.sh
 ENV CONFIGURE_OPTS --disable-install-doc
 RUN echo 'gem: --no-rdoc --no-ri' >> /.gemrc
 
+# Installing MRIs
 RUN rbenv install 2.3.0
 RUN rbenv install 1.9.3-p550
+
+# Installing JRuby
+RUN apt-get install default-jre -y
+RUN rbenv install jruby-9.0.5.0
+
 RUN rbenv global 2.3.0
 RUN rbenv rehash
 ENV PATH /root/.rbenv/shims:$PATH
