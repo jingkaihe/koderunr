@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
-	"strings"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 // Runner runs the code
@@ -17,67 +17,59 @@ type Runner struct {
 }
 
 // Run the code in the container
-func (r *Runner) Run(w http.ResponseWriter, isEvtStream bool) {
-	f, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "The server does not support streaming!", http.StatusInternalServerError)
-	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("X-Accel-Buffering", "no")
-
+func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	execArgs := []string{"run", "-i", "koderunr", r.Ext, r.Source}
-
 	if r.Version != "" {
 		execArgs = append(execArgs, r.Version)
 	}
 
 	cmd := exec.Command("docker", execArgs...)
 
-	pipeReader, pipeWriter := io.Pipe()
-	defer pipeWriter.Close()
-	defer pipeReader.Close()
+	stdoutReader, stdoutWriter := io.Pipe()
+	cmd.Stdout = stdoutWriter
+	cmd.Stderr = stdoutWriter
 
-	cmd.Stdout = pipeWriter
-	cmd.Stderr = pipeWriter
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v", err)
+	}
+
+	defer stdin.Close()
+	defer stdoutWriter.Close()
+
+	go func() {
+		psc := redis.PubSubConn{Conn: conn}
+		psc.Subscribe(uuid + "#stdin")
+		defer psc.Close()
+
+	StdinSubscriptionLoop:
+		for {
+			switch n := psc.Receive().(type) {
+			case redis.Message:
+				fmt.Printf("Message: %s %s\n", n.Channel, n.Data)
+				stdin.Write(n.Data)
+			case error:
+				break StdinSubscriptionLoop
+			}
+		}
+		fmt.Println("Stdin subscription closed")
+	}()
 
 	// Doing the streaming
 	go func() {
-		buffer := make([]byte, 1024)
+		buffer := make([]byte, 512)
 		for {
-			n, err := pipeReader.Read(buffer)
+			n, err := stdoutReader.Read(buffer)
 			if err != nil {
 				if err != io.EOF {
-					pipeReader.Close()
+					stdoutReader.Close()
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				}
 				break
 			}
 
 			data := buffer[0:n]
-
-			if isEvtStream == true {
-				// To make event source comfort.
-				// From http://www.html5rocks.com/en/tutorials/eventsource/basics/
-				// If your message is longer, you can break it up by using multiple "data:" lines.
-				// Two or more consecutive lines beginning with "data:" will be treated as a single
-				// piece of data, meaning only one message event will be fired. Each line should
-				// end in a single "\n" (except for the last, which should end with two). The result
-				// passed to your message handler is a single string concatenated by newline characters.
-				s := string(data)
-				lines := strings.Split(s, "\n")
-				for i, line := range lines {
-					lines[i] = "data: " + line
-				}
-				s = strings.Join(lines, "\n")
-				fmt.Fprintf(w, "%s\n\n", s)
-			} else {
-				w.Write(data)
-			}
-
-			f.Flush()
+			output <- string(data)
 
 			for i := 0; i < n; i++ {
 				buffer[i] = 0

@@ -29,11 +29,16 @@ func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "The source code doesn't exist", 422)
 		return
 	}
+
+	// Started running code
 	runner := &Runner{}
 	json.Unmarshal(value, runner)
 
 	isEvtStream := r.FormValue("evt") == "true"
-	runner.Run(w, isEvtStream)
+	client := NewClient(runner, conn, uuid)
+
+	go client.Write(w, isEvtStream)
+	client.Run()
 
 	// Purge the source code
 	_, err = conn.Do("DEL", uuid)
@@ -69,6 +74,18 @@ func (s *Server) handleReg(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, uuid)
 }
 
+func (s *Server) handleStdin(w http.ResponseWriter, r *http.Request) {
+	input := r.FormValue("input")
+	uuid := r.FormValue("uuid")
+
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	conn.Do("PUBLISH", uuid+"#stdin", input)
+
+	fmt.Fprintf(w, "")
+}
+
 var servingStatic bool
 
 func init() {
@@ -95,5 +112,6 @@ func main() {
 
 	http.HandleFunc("/run", s.handleRunCode)
 	http.HandleFunc("/register/", s.handleReg)
+	http.HandleFunc("/stdin/", s.handleStdin)
 	http.ListenAndServe(":8080", nil)
 }

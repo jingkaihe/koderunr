@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bufio"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -58,6 +59,8 @@ func (r *Runner) FetchUUID(endpoint string) error {
 
 // Run execute the runner
 func (r *Runner) Run(endpoint string) error {
+	go r.fetchStdin(endpoint)
+
 	// TODO: Build the URI in a classy way
 	resp, err := http.Get(endpoint + "run?uuid=" + r.uuid)
 	if err != nil {
@@ -69,6 +72,30 @@ func (r *Runner) Run(endpoint string) error {
 		if err != io.EOF {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (r *Runner) fetchStdin(endpoint string) error {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		text, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		params := url.Values{"uuid": {r.uuid}, "input": {text}}
+
+		resp, err := http.PostForm(endpoint+"stdin/", params)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
 	}
 
 	return nil
