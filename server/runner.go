@@ -65,6 +65,8 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 					stdoutReader.Close()
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				}
+
+				close(output)
 				break
 			}
 
