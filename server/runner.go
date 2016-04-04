@@ -25,18 +25,17 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 
 	cmd := exec.Command("docker", execArgs...)
 
+	stdoutReader, stdoutWriter := io.Pipe()
+	cmd.Stdout = stdoutWriter
+	cmd.Stderr = stdoutWriter
+
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v", err)
 	}
+
 	defer stdin.Close()
-
-	stdoutReader, stdoutWriter := io.Pipe()
-
 	defer stdoutWriter.Close()
-
-	cmd.Stdout = stdoutWriter
-	cmd.Stderr = stdoutWriter
 
 	go func() {
 		psc := redis.PubSubConn{Conn: conn}
@@ -53,7 +52,7 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 				break StdinSubscriptionLoop
 			}
 		}
-		fmt.Println("Done")
+		fmt.Println("Stdin subscription closed")
 	}()
 
 	// Doing the streaming
