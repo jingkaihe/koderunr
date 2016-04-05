@@ -62,5 +62,5 @@ $ kode run foo.rb -version=2.3.0 # Running foo.rb using ruby 2.2.0
 - [x] cli configuration
 - [x] Binaries distribution
 - [x] Web interface that sucks less...
-- [ ] Server and Docker containers hosting
+- [x] Server and Docker containers hosting
 - [x] Support programming language versioning
