@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -27,7 +28,7 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	Runnerthrottle <- struct{}{}
 	defer func() { <-Runnerthrottle }()
 
-	execArgs := []string{"run", "-i", "koderunr", r.Ext, r.Source}
+	execArgs := []string{"run", "-i", "--rm", "koderunr", r.Ext, r.Source}
 	if r.Version != "" {
 		execArgs = append(execArgs, r.Version)
 	}
@@ -64,10 +65,10 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	select {
 	// gracefully Kill the container when it's being hanging around for too long
 	case <-time.After(time.Duration(r.Timeout) * time.Second):
-		if err := cmd.Process.Kill(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Failed to kill %v\n", err)
+		if err := cmd.Process.Signal(syscall.SIGINT); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Failed to shotdown %v\n", err)
 		} else {
-			timeoutMsg := fmt.Sprintf("Running container %s is killed since reached the timeout %ds\n", uuid, r.Timeout)
+			timeoutMsg := fmt.Sprintf("Running container %s is shutdown since reached the timeout %ds\n", uuid, r.Timeout)
 			fmt.Fprintf(os.Stdout, timeoutMsg)
 			output <- timeoutMsg
 		}
