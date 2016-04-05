@@ -28,7 +28,14 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	Runnerthrottle <- struct{}{}
 	defer func() { <-Runnerthrottle }()
 
-	execArgs := []string{"run", "-i", "--rm", "koderunr", r.Ext, r.Source}
+	execArgs := []string{
+		"run",
+		"-i",            // run in interactive mode
+		"--rm",          // automatically remove the container when it exits
+		"--net", "none", // disables all incoming and outgoing networking
+		"--cpu-quota=15000", // a container can use 15% of a CPU resource
+		"--memory='50mb'",   // use 50mb mem
+		"koderunr", r.Ext, r.Source}
 	if r.Version != "" {
 		execArgs = append(execArgs, r.Version)
 	}
