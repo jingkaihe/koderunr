@@ -48,9 +48,10 @@ func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleReg(w http.ResponseWriter, r *http.Request) {
 	runner := Runner{
-		r.FormValue("ext"),
-		r.FormValue("source"),
-		r.FormValue("version"),
+		Ext:     r.FormValue("ext"),
+		Source:  r.FormValue("source"),
+		Version: r.FormValue("version"),
+		Timeout: 15,
 	}
 
 	bts, _ := json.Marshal(&runner)

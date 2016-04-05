@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"time"
 
 	"github.com/garyburd/redigo/redis"
 )
@@ -15,6 +16,7 @@ type Runner struct {
 	Ext     string `json:"ext"`
 	Source  string `json:"source"`
 	Version string `json:"version"`
+	Timeout int    `json:"timeout"` // How long is the code going to run
 }
 
 // Runnerthrottle Limit the max throttle for runner
@@ -50,7 +52,33 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	go pipeStdin(conn, uuid, stdin, wg)
 	go pipeStdout(stdoutReader, output, wg)
 
-	cmd.Run()
+	// Start running the container
+	cmd.Start()
+	done := make(chan error, 1)
+
+	// Receive message when the job get done
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	select {
+	// gracefully Kill the container when it's being hanging around for too long
+	case <-time.After(time.Duration(r.Timeout) * time.Second):
+		if err := cmd.Process.Kill(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Failed to kill %v\n", err)
+		} else {
+			timeoutMsg := fmt.Sprintf("Running container %s is killed since reached the timeout %ds\n", uuid, r.Timeout)
+			fmt.Fprintf(os.Stdout, timeoutMsg)
+			output <- timeoutMsg
+		}
+	// when the container has finished
+	case err := <-done:
+		if err != nil {
+			fmt.Printf("Container %s done with error = %v\n", uuid, err)
+		} else {
+			fmt.Printf("Container %s done gracefully without error\n", uuid)
+		}
+	}
 }
 
 func pipeStdin(conn redis.Conn, uuid string, stdin io.WriteCloser, wg sync.WaitGroup) {
@@ -96,6 +124,7 @@ func pipeStdout(stdout *io.PipeReader, output messages, wg sync.WaitGroup) {
 		data := buffer[0:n]
 		output <- string(data)
 
+		// Clear the buffer
 		for i := 0; i < n; i++ {
 			buffer[i] = 0
 		}
