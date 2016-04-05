@@ -17,8 +17,14 @@ type Runner struct {
 	Version string `json:"version"`
 }
 
+// Runnerthrottle Limit the max throttle for runner
+var Runnerthrottle chan struct{}
+
 // Run the code in the container
 func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
+	Runnerthrottle <- struct{}{}
+	defer func() { <-Runnerthrottle }()
+
 	execArgs := []string{"run", "-i", "koderunr", r.Ext, r.Source}
 	if r.Version != "" {
 		execArgs = append(execArgs, r.Version)

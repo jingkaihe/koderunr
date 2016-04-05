@@ -8,13 +8,17 @@ import (
 )
 
 var servingStatic bool
+var runnerThrottleNum int
 
 func init() {
 	flag.BoolVar(&servingStatic, "static", false, "if using Go server hosting static files")
+	flag.IntVar(&runnerThrottleNum, "runner_throttle", 4, "Limit the max throttle for the runners")
 	flag.Parse()
 }
 
 func main() {
+	Runnerthrottle = make(chan struct{}, runnerThrottleNum)
+
 	redisPool := redis.NewPool(func() (redis.Conn, error) {
 		conn, err := redis.Dial("tcp", ":6379")
 		if err != nil {
