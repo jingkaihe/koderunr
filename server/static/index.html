@@ -32,8 +32,16 @@ end
       <span>&nbsp;&nbsp;&nbsp;</span>
       <button id="submitCode">Run code!</button>
       <hr />
-      <textarea readonly id="inputField"></textarea>
-      <textarea readonly id="streamingResult"></textarea>
+      <div class="stdio">
+        <div class="stdin">
+          <span>Input</span>
+          <textarea id="inputField"></textarea>
+        </div>
+        <div class="stdout">
+          <span>Output</span>
+          <textarea readonly id="streamingResult"></textarea>
+        </div>
+      </div>
     </div>
     </div>
 
