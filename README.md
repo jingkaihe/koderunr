@@ -1,51 +1,48 @@
 # Koderunr
 
-Koderunner (read code runner) is a tool that can let you run code without installing the language on your machine. Currently heavily under development.
+Koderunr (read code runner) is a container-based service that allows you to run code without programming language installation pain, instead the program will be executed remotely in a container.
+
+![Gif Example](http://g.recordit.co/GY2xkSf16B.gif)
 
 ## Install
 
-Currently WIP, need to figure that out.
+You can go to the cli directory and run `go build` to get the command line binary.
 
-One of the possible approaches is cross-compiling the source and distributing the binary versions, so you don't need any non-sense dependencies on your machine.
-
+Or you can cross compile to the binaries that running on platforms including OS X, Linux, FreeBSD and OpenBSD by doing `rake build`, which can allow you to build production ready binaries.
 
 ## Web Interface
 
-Need to find a server. Or argubaly host it on GitHub page?
+Now it's live on http://koderunr.tech!
 
 ## Examples
 
-Suppose you have a golang file called `main.go`, which has the source
+Suppose you have a ruby file called `foo.rb`, which has the source
 
-```go
-package main
+```ruby
+print "Enter a number to count down: "
+$stdout.flush
+num = readline.to_i rescue 0
 
-import (
-	"fmt"
-	"time"
-)
+num.downto(0) do |i|
+  puts "...#{i}"
+  $stdout.flush
+  sleep 1
+end
 
-func main() {
-	c := time.Tick(1 * time.Second)
-	i := 0
-	for now := range c {
-		fmt.Printf("%v %d\n", now, i)
-		if i == 3 {
-			break
-		}
-		i++
-	}
-}
+puts "boom!"
 ```
 
 You can execute the source code by running the command - and the results will be outputted as below with time intervals.
 
 ```bash
-$ kode run main.go # main.go is the file you have locally
-2016-03-28 09:24:14.590078119 +0100 BST 0
-2016-03-28 09:24:15.59435734 +0100 BST 1
-2016-03-28 09:24:16.590340842 +0100 BST 2
-2016-03-28 09:24:17.590881844 +0100 BST 3
+$ kode run foo.rb
+Enter a number to count down: 4
+...4
+...3
+...2
+...1
+...0
+boom!
 ```
 
 Also you can specified version of the language you want by
