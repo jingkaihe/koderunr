@@ -27,14 +27,37 @@ $(function() {
     if (this.version) {
       runnable.version = this.version
     }
-    $.post('/register/', runnable, function(msg) {
+    $.post('/register/', runnable, function(uuid) {
       // Empty the output field
       $("#streamingResult").text("");
-      var evtSource = new EventSource("/run?evt=true&uuid=" + msg);
+      $("#inputField").val("").focus();
+
+      var evtSource = new EventSource("/run?evt=true&uuid=" + uuid);
       evtSource.onmessage = function(e) {
         var text = $("#streamingResult").text();
         $("#streamingResult").text(text + e.data);
       }
+
+      $("#inputField").on("keydown", function(evt){
+        // Disable the arrow keys
+        if([37, 38, 39, 40].indexOf(evt.which) > -1) {
+            evt.preventDefault();
+        }
+
+        if (evt.which == 13) {
+          var text = $(this).val();
+          var lastCarriageReturn = text.lastIndexOf("\n")
+          var input;
+          if (lastCarriageReturn == -1) {
+            input = text + "\n"
+          }else{
+            input = text.substr(lastCarriageReturn, text.length) + "\n"
+          }
+          $.post('/stdin/', {input: input, uuid: uuid}, function(msg) {
+            console.log(msg)
+          });
+        }
+      });
     });
   };
 
@@ -51,6 +74,12 @@ $(function() {
 
   $("#submitCode").on("click", runner.runCode.bind(runner));
 
+  $(document).on("keydown", function(e){
+    if (e.keyCode == 13 && (e.ctrlKey || e.metaKey)) {
+       runner.runCode();
+    }
+  });
+
   $("#ext").on("change", function() {
     // Empty the screen
     sourceCodeCache.store(runner)
@@ -66,5 +95,5 @@ $(function() {
     if (cachedSourceCode) {
       runner.editor.setValue(cachedSourceCode, 1);
     }
-  })
+  });
 });

@@ -13,7 +13,13 @@
     <div id="content">
 <div id="editor">puts "Ruby Version: #{RUBY_VERSION}"
 
-3.times do |i|
+puts "input a number"
+
+STDOUT.flush
+
+n = gets.to_i rescue 3
+
+n.times do |i|
   puts "hello world - #{i}"
   STDOUT.flush
   sleep 1
