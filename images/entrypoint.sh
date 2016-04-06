@@ -1,14 +1,17 @@
 #!/bin/bash
 set -e
 
-case "$1" in
+ext=$1
+source_code=$2
+
+case "$ext" in
   ".go" )
     touch runner.go
-    echo "$2" > runner.go
+    echo "$source_code" > runner.go
     go run runner.go ;;
   ".c" )
     touch runner.c
-    echo "$2" > runner.c
+    echo "$source_code" > runner.c
     cc runner.c
     ./a.out ;;
   ".rb" )
@@ -27,10 +30,14 @@ case "$1" in
     fi
 
     touch runner.rb
-    echo "$2" > runner.rb
+    echo "$source_code" > runner.rb
     ruby runner.rb ;;
   ".py" )
     touch runner.py
-    echo "$2" > runner.py
+    echo "$source_code" > runner.py
     python runner.py ;;
+  ".ex" )
+    touch runner.ex
+    echo "$source_code" > runner.ex
+    elixir runner.ex ;;
 esac
