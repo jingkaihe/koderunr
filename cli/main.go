@@ -20,7 +20,8 @@ func main() {
 	)
 
 	cli.Cmds = map[string]commands.Command{
-		"run": commands.Run{},
+		"run":       commands.Run{},
+		"languages": commands.Langs{},
 	}
 
 	cli.Exec(args)

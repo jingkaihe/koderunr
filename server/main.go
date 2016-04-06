@@ -35,6 +35,7 @@ func main() {
 		http.Handle("/", http.FileServer(http.Dir("static")))
 	}
 
+	http.HandleFunc("/langs/", s.handleLangs)
 	http.HandleFunc("/run", s.handleRunCode)
 	http.HandleFunc("/register/", s.handleReg)
 	http.HandleFunc("/stdin/", s.handleStdin)

@@ -85,3 +85,17 @@ func (s *Server) handleStdin(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "")
 }
+
+func (s *Server) handleLangs(w http.ResponseWriter, r *http.Request) {
+	text := `
+Supported Languages:
+  Ruby 2.3.0
+  Ruby 1.9.3-p550
+  Go 1.6
+  Python 2.7.3
+  C
+`
+	text = strings.TrimSpace(text)
+
+	fmt.Fprintf(w, "%s\n", text)
+}
