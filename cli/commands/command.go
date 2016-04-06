@@ -81,11 +81,7 @@ func (cli *CLI) Exec(args []string) {
 			cli.Brief()
 		}
 	default:
-		if argsLen > 0 {
-			cli.RunCmd(cmdName, args[1:])
-		} else {
-			cli.Brief()
-		}
+		cli.RunCmd(cmdName, args[1:])
 	}
 }
 
