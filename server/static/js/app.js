@@ -13,6 +13,7 @@ $(function() {
     ".go": "golang",
     ".rb": "ruby",
     ".c": "c_cpp",
+    ".ex": "elixir",
   };
 
   KodeRunr.prototype.setExt = function(ext) {
