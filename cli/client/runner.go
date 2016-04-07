@@ -62,7 +62,7 @@ func (r *Runner) Run(endpoint string) error {
 	go r.fetchStdin(endpoint)
 
 	// TODO: Build the URI in a classy way
-	resp, err := http.Get(endpoint + "run?uuid=" + r.uuid)
+	resp, err := http.Get(endpoint + "run/?uuid=" + r.uuid)
 	if err != nil {
 		return err
 	}
