@@ -54,8 +54,9 @@ $(function() {
           }else{
             input = text.substr(lastCarriageReturn, text.length) + "\n"
           }
-          $.post('/stdin/', {input: input, uuid: uuid}, function(msg) {
-            console.log(msg)
+          $.post('/stdin/', {
+            input: input,
+            uuid: uuid
           });
         }
       });
