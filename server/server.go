@@ -16,6 +16,7 @@ type Server struct {
 	redisPool *redis.Pool
 }
 
+// HandleRunCode streams the running program output to the frontend
 func (s *Server) HandleRunCode(w http.ResponseWriter, r *http.Request) {
 	uuid := r.FormValue("uuid")
 
@@ -46,6 +47,7 @@ func (s *Server) HandleRunCode(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HandleSaveCode saves the source code and returns a ID.
 func (s *Server) HandleSaveCode(w http.ResponseWriter, r *http.Request) {
 	runner := Runner{
 		Ext:     r.FormValue("ext"),
@@ -74,6 +76,7 @@ func (s *Server) HandleSaveCode(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, codeID)
 }
 
+// HandleFetchCode loads the code by codeID and returns the source code to user
 func (s *Server) HandleFetchCode(w http.ResponseWriter, r *http.Request) {
 	codeID := r.FormValue("codeID")
 
@@ -90,6 +93,7 @@ func (s *Server) HandleFetchCode(w http.ResponseWriter, r *http.Request) {
 	w.Write(value)
 }
 
+// HandleReg fetch the code from the client and save it in Redis
 func (s *Server) HandleReg(w http.ResponseWriter, r *http.Request) {
 	runner := Runner{
 		Ext:     r.FormValue("ext"),
@@ -118,6 +122,7 @@ func (s *Server) HandleReg(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, uuid)
 }
 
+// HandleStdin consumes the stdin from the client side
 func (s *Server) HandleStdin(w http.ResponseWriter, r *http.Request) {
 	input := r.FormValue("input")
 	uuid := r.FormValue("uuid")
@@ -130,6 +135,7 @@ func (s *Server) HandleStdin(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "")
 }
 
+//HandleLangs deals with the request for show available programming languages
 func (s *Server) HandleLangs(w http.ResponseWriter, r *http.Request) {
 	text := `
 Supported Languages:
