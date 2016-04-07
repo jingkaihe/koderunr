@@ -9,31 +9,40 @@ $(function() {
     this.setExt(ext);
   }
 
-  KodeRunr.prototype.LANG_MAPPING = {
+  KodeRunr.LANG_MAPPING = {
     ".go": "golang",
     ".rb": "ruby",
     ".c": "c_cpp",
     ".ex": "elixir",
   };
 
+  KodeRunr.ROUTES = {
+    RUN: "/run/",
+    SAVE: "/save/",
+    STDIN: "/stdin/",
+    REGISTER: "/register/",
+  }
+
   KodeRunr.prototype.setExt = function(ext) {
     this.ext = ext;
-    this.editor.getSession().setMode("ace/mode/" + this.LANG_MAPPING[this.ext]);
+    this.editor.getSession().setMode("ace/mode/" + KodeRunr.LANG_MAPPING[this.ext]);
   };
 
   KodeRunr.prototype.runCode = function(evt) {
     var sourceCode = this.editor.getValue();
 
     var runnable = { ext: this.ext, source: sourceCode };
+
     if (this.version) {
-      runnable.version = this.version
+      runnable.version = this.version;
     }
-    $.post('/register/', runnable, function(uuid) {
+
+    $.post(KodeRunr.ROUTES.REGISTER, runnable, function(uuid) {
       // Empty the output field
       $("#streamingResult").text("");
       $("#inputField").val("").focus();
 
-      var evtSource = new EventSource("/run?evt=true&uuid=" + uuid);
+      var evtSource = new EventSource(KodeRunr.ROUTES.RUN + "?evt=true&uuid=" + uuid);
       evtSource.onmessage = function(e) {
         var text = $("#streamingResult").text();
         $("#streamingResult").text(text + e.data);
@@ -54,7 +63,7 @@ $(function() {
           }else{
             input = text.substr(lastCarriageReturn, text.length) + "\n"
           }
-          $.post('/stdin/', {
+          $.post(KodeRunr.ROUTES.STDIN, {
             input: input,
             uuid: uuid
           });
@@ -62,6 +71,19 @@ $(function() {
       });
     });
   };
+
+  KodeRunr.prototype.saveCode = function(event) {
+    var sourceCode = this.editor.getValue();
+
+    var runnable = { ext: this.ext, source: sourceCode };
+    if (this.version) {
+      runnable.version = this.version
+    }
+
+    $.post(KodeRunr.ROUTES.SAVE, runnable, function(uuid) {
+      alert(uuid);
+    });
+  }
 
   var sourceCodeCache = sourceCodeCache || {};
   sourceCodeCache.fetch = function(runner) {
@@ -75,10 +97,22 @@ $(function() {
   var runner = new KodeRunr($("#ext").val());
 
   $("#submitCode").on("click", runner.runCode.bind(runner));
+  $("#shareCode").on("click", runner.saveCode.bind(runner));
 
+  // Shortcuts
   $(document).on("keydown", function(e){
-    if (e.keyCode == 13 && (e.ctrlKey || e.metaKey)) {
-       runner.runCode();
+    if (e.ctrlKey || e.metaKey) {
+      switch (e.keyCode) {
+      // run
+      case 13:
+        runner.runCode();
+        break;
+      // save
+      case 83:
+        e.preventDefault()
+        runner.saveCode();
+        break;
+      }
     }
   });
 

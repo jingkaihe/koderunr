@@ -16,13 +16,13 @@ type Server struct {
 	redisPool *redis.Pool
 }
 
-func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleRunCode(w http.ResponseWriter, r *http.Request) {
 	uuid := r.FormValue("uuid")
 
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	value, err := redis.Bytes(conn.Do("GET", uuid))
+	value, err := redis.Bytes(conn.Do("GET", uuid+"#run"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: cannot GET: %v\n", err)
 		http.Error(w, "The source code doesn't exist", 422)
@@ -40,13 +40,54 @@ func (s *Server) handleRunCode(w http.ResponseWriter, r *http.Request) {
 	client.Run()
 
 	// Purge the source code
-	_, err = conn.Do("DEL", uuid)
+	_, err = conn.Do("DEL", uuid+"#run")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: Failed to purge the source code for %s - %v\n", uuid, err)
 	}
 }
 
-func (s *Server) handleReg(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleSaveCode(w http.ResponseWriter, r *http.Request) {
+	runner := Runner{
+		Ext:     r.FormValue("ext"),
+		Source:  r.FormValue("source"),
+		Version: r.FormValue("version"),
+	}
+
+	bts, _ := json.Marshal(&runner)
+	strj := string(bts)
+
+	codeID := NewRandID(10)
+
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do("SET", codeID+"#snippet", strj)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		http.Error(w, "A serious error has occured.", 500)
+		return
+	}
+
+	fmt.Fprintf(w, codeID)
+}
+
+func (s *Server) HandleFetchCode(w http.ResponseWriter, r *http.Request) {
+	uuid := r.FormValue("id")
+
+	conn := s.redisPool.Get()
+	defer conn.Close()
+
+	value, err := redis.Bytes(conn.Do("GET", uuid+"#snippet"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: cannot GET: %v\n", err)
+		http.Error(w, "The source code doesn't exist", 422)
+		return
+	}
+
+	w.Write(value)
+}
+
+func (s *Server) HandleReg(w http.ResponseWriter, r *http.Request) {
 	runner := Runner{
 		Ext:     r.FormValue("ext"),
 		Source:  r.FormValue("source"),
@@ -64,7 +105,7 @@ func (s *Server) handleReg(w http.ResponseWriter, r *http.Request) {
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("SET", uuid, strj)
+	_, err := conn.Do("SET", uuid+"#run", strj)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		http.Error(w, "A serious error has occured.", 500)
@@ -74,7 +115,7 @@ func (s *Server) handleReg(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, uuid)
 }
 
-func (s *Server) handleStdin(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleStdin(w http.ResponseWriter, r *http.Request) {
 	input := r.FormValue("input")
 	uuid := r.FormValue("uuid")
 
@@ -86,7 +127,7 @@ func (s *Server) handleStdin(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "")
 }
 
-func (s *Server) handleLangs(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleLangs(w http.ResponseWriter, r *http.Request) {
 	text := `
 Supported Languages:
   Ruby - 2.3.0
