@@ -56,7 +56,10 @@ func (s *Server) HandleSaveCode(w http.ResponseWriter, r *http.Request) {
 	bts, _ := json.Marshal(&runner)
 	strj := string(bts)
 
-	codeID := NewRandID(10)
+	codeID := r.FormValue("codeID")
+	if codeID == "" {
+		codeID = NewRandID(10)
+	}
 
 	conn := s.redisPool.Get()
 	defer conn.Close()
@@ -72,7 +75,7 @@ func (s *Server) HandleSaveCode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleFetchCode(w http.ResponseWriter, r *http.Request) {
-	codeID := r.FormValue("id")
+	codeID := r.FormValue("codeID")
 
 	conn := s.redisPool.Get()
 	defer conn.Close()

@@ -83,9 +83,12 @@ $(function() {
       runnable.version = this.version
     }
 
+    if (this.codeID) {
+      runnable.codeID = this.codeID;
+    }
+
     $.post(ROUTERS.SAVE, runnable, function(codeID) {
       window.history.pushState(codeID, "KodeRunr#" + codeID, "/#" + codeID);
-
     });
   }
 
@@ -99,16 +102,19 @@ $(function() {
   }
 
   var runner = new KodeRunr();
+  var codeID = window.location.hash.substring(1);
 
-  var codeID = window.location.hash.substring(1)
-  console.log(codeID);
   if (codeID) {
-    $.get(ROUTERS.FETCH + "?id=" + codeID, function(msg) {
+    $.get(ROUTERS.FETCH + "?codeID=" + codeID, function(msg) {
       var data = JSON.parse(msg);
-
-      $("#ext").val(data.ext + " " + data.version);
-      runner.setLang(data.ext + " " + data.version);
+      var lang = data.ext;
+      if (data.version) {
+        lang = lang + " " + data.version;
+      }
+      $("#ext").val(lang);
+      runner.setLang(lang);
       runner.editor.setValue(data.source, 1);
+      runner.codeID = codeID;
     });
   }
 
@@ -129,7 +135,7 @@ $(function() {
         runner.runCode();
         break;
       // save
-      case 115:
+      case 83:
         e.preventDefault();
         runner.saveCode();
         break;
@@ -145,7 +151,8 @@ $(function() {
 
     runner.setLang(this.value);
 
-    var cachedSourceCode = sourceCodeCache.fetch(runner)
+    var cachedSourceCode = sourceCodeCache.fetch(runner);
+
     if (cachedSourceCode) {
       runner.editor.setValue(cachedSourceCode, 1);
     }
