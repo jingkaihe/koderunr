@@ -72,12 +72,12 @@ func (s *Server) HandleSaveCode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleFetchCode(w http.ResponseWriter, r *http.Request) {
-	uuid := r.FormValue("id")
+	codeID := r.FormValue("id")
 
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	value, err := redis.Bytes(conn.Do("GET", uuid+"#snippet"))
+	value, err := redis.Bytes(conn.Do("GET", codeID+"#snippet"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: cannot GET: %v\n", err)
 		http.Error(w, "The source code doesn't exist", 422)

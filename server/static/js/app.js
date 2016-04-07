@@ -1,48 +1,51 @@
+var ROUTERS = {
+  RUN: "/run/",
+  SAVE: "/save/",
+  STDIN: "/stdin/",
+  REGISTER: "/register/",
+  FETCH: "/fetch/"
+}
+
+var LANG_MAPPING = {
+  ".go": "golang",
+  ".rb": "ruby",
+  ".c": "c_cpp",
+  ".ex": "elixir",
+};
+
 $(function() {
-  var KodeRunr = function(ext){
+  var KodeRunr = function(){
+    this.defaultEditor();
+    this.setLang($("#ext").val());
+  }
+
+  KodeRunr.prototype.defaultEditor = function() {
     this.editor = ace.edit("editor");
     this.editor.setTheme("ace/theme/monokai");
     this.editor.setOptions({
       fontSize: "12pt",
     });
-
-    this.setExt(ext);
-  }
-
-  KodeRunr.LANG_MAPPING = {
-    ".go": "golang",
-    ".rb": "ruby",
-    ".c": "c_cpp",
-    ".ex": "elixir",
   };
 
-  KodeRunr.ROUTES = {
-    RUN: "/run/",
-    SAVE: "/save/",
-    STDIN: "/stdin/",
-    REGISTER: "/register/",
-  }
-
-  KodeRunr.prototype.setExt = function(ext) {
-    this.ext = ext;
-    this.editor.getSession().setMode("ace/mode/" + KodeRunr.LANG_MAPPING[this.ext]);
+  KodeRunr.prototype.setLang = function(lang) {
+    [this.ext, this.version] = lang.split(" ")
+    this.editor.getSession().setMode("ace/mode/" + LANG_MAPPING[this.ext]);
   };
 
   KodeRunr.prototype.runCode = function(evt) {
     var sourceCode = this.editor.getValue();
-
     var runnable = { ext: this.ext, source: sourceCode };
 
     if (this.version) {
       runnable.version = this.version;
     }
 
-    $.post(KodeRunr.ROUTES.REGISTER, runnable, function(uuid) {
+    $.post(ROUTERS.REGISTER, runnable, function(uuid) {
       // Empty the output field
       $("#streamingResult").text("");
       $("#inputField").val("").focus();
 
-      var evtSource = new EventSource(KodeRunr.ROUTES.RUN + "?evt=true&uuid=" + uuid);
+      var evtSource = new EventSource(ROUTERS.RUN + "?evt=true&uuid=" + uuid);
       evtSource.onmessage = function(e) {
         var text = $("#streamingResult").text();
         $("#streamingResult").text(text + e.data);
@@ -63,7 +66,7 @@ $(function() {
           }else{
             input = text.substr(lastCarriageReturn, text.length) + "\n"
           }
-          $.post(KodeRunr.ROUTES.STDIN, {
+          $.post(ROUTERS.STDIN, {
             input: input,
             uuid: uuid
           });
@@ -80,8 +83,9 @@ $(function() {
       runnable.version = this.version
     }
 
-    $.post(KodeRunr.ROUTES.SAVE, runnable, function(uuid) {
-      alert(uuid);
+    $.post(ROUTERS.SAVE, runnable, function(codeID) {
+      window.history.pushState(codeID, "KodeRunr#" + codeID, "/#" + codeID);
+
     });
   }
 
@@ -94,10 +98,27 @@ $(function() {
     localStorage.setItem(runner.ext, runner.editor.getValue())
   }
 
-  var runner = new KodeRunr($("#ext").val());
+  var runner = new KodeRunr();
 
-  $("#submitCode").on("click", runner.runCode.bind(runner));
-  $("#shareCode").on("click", runner.saveCode.bind(runner));
+  var codeID = window.location.hash.substring(1)
+  console.log(codeID);
+  if (codeID) {
+    $.get(ROUTERS.FETCH + "?id=" + codeID, function(msg) {
+      var data = JSON.parse(msg);
+
+      $("#ext").val(data.ext + " " + data.version);
+      runner.setLang(data.ext + " " + data.version);
+      runner.editor.setValue(data.source, 1);
+    });
+  }
+
+  $("#submitCode").on("click", function(event){
+    runner.runCode();
+  });
+
+  $("#shareCode").on("click", function(event){
+    runner.saveCode();
+  });
 
   // Shortcuts
   $(document).on("keydown", function(e){
@@ -108,8 +129,8 @@ $(function() {
         runner.runCode();
         break;
       // save
-      case 83:
-        e.preventDefault()
+      case 115:
+        e.preventDefault();
         runner.saveCode();
         break;
       }
@@ -122,10 +143,7 @@ $(function() {
     runner.editor.setValue("", undefined);
     $("#streamingResult").text("");
 
-    var [ext, version] = this.value.split(" ")
-    runner.setExt(ext);
-
-    runner.version = version
+    runner.setLang(this.value);
 
     var cachedSourceCode = sourceCodeCache.fetch(runner)
     if (cachedSourceCode) {
