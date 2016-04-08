@@ -1,11 +1,13 @@
 #content {
   width: 100%;
 }
+
 #editor {
   position: fixed;
   float: left;
   width: 100%;
   height: 60%;
+  z-index: 2;
 }
 
 #result {
@@ -14,7 +16,7 @@
   width: 100%;
   height: 37%;
   padding-top: 100px;
-
+  z-index: 1;
 }
 
 .stdio {
