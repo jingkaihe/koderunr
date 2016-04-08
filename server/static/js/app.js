@@ -126,6 +126,10 @@ $(function() {
     runner.saveCode();
   });
 
+  runner.editor.on("change", function(event){
+    window.history.pushState("KodeRunr#wip", "KodeRunr#wip" + codeID, "/");
+  });
+
   // Shortcuts
   $(document).on("keydown", function(e){
     if (e.ctrlKey || e.metaKey) {
