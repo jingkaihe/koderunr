@@ -2,6 +2,7 @@ package client
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,20 +16,35 @@ const TestEndPoint = "http://127.0.0.1:8080/"
 
 // Runner contains the code to be run
 type Runner struct {
-	ext     string
+	lang    string
 	source  string
 	version string
 	uuid    string
 }
 
+var extToLang = map[string]string{
+	".rb":  "ruby",
+	".py":  "python",
+	".ex":  "elixir",
+	".iex": "elixir",
+	".c":   "c",
+	".cc":  "c",
+	".go":  "go",
+}
+
 // NewRunner create a new runner
 func NewRunner(version, fName string) (r *Runner, err error) {
 	ext := path.Ext(fName)
+	lang := extToLang[ext]
+
+	if lang == "" {
+		err = errors.New("%s extension is not supported")
+		return
+	}
 
 	ctx, err := ioutil.ReadFile(fName)
-
 	r = &Runner{
-		ext:     ext,
+		lang:    lang,
 		source:  string(ctx),
 		version: version,
 	}
@@ -37,7 +53,7 @@ func NewRunner(version, fName string) (r *Runner, err error) {
 
 // FetchUUID fetch the UUID from the API endpoint
 func (r *Runner) FetchUUID(endpoint string) error {
-	params := url.Values{"ext": {r.ext}, "source": {string(r.source)}}
+	params := url.Values{"lang": {r.lang}, "source": {string(r.source)}}
 	if r.version != "" {
 		params["version"] = []string{r.version}
 	}

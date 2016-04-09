@@ -5,16 +5,16 @@ ext=$1
 source_code=$2
 
 case "$ext" in
-  ".go" )
+  "go" )
     touch runner.go
     echo "$source_code" > runner.go
     go run runner.go ;;
-  ".c" )
+  "c" )
     touch runner.c
     echo "$source_code" > runner.c
     cc runner.c
     ./a.out ;;
-  ".rb" )
+  "ruby" )
     if [[ -n "$3" ]]; then
       rb_version=$3
       rb_versions=($(cd ~/.rbenv/versions && ls -d */))
@@ -32,11 +32,11 @@ case "$ext" in
     touch runner.rb
     echo "$source_code" > runner.rb
     ruby runner.rb ;;
-  ".py" )
+  "python" )
     touch runner.py
     echo "$source_code" > runner.py
     python runner.py ;;
-  ".ex" )
+  "elixir" )
     touch runner.ex
     echo "$source_code" > runner.ex
     elixir runner.ex ;;

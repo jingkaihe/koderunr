@@ -6,17 +6,16 @@ var ROUTERS = {
   FETCH: "/fetch/"
 }
 
-var LANG_MAPPING = {
-  ".go": "golang",
-  ".rb": "ruby",
-  ".c": "c_cpp",
-  ".ex": "elixir",
-};
-
 $(function() {
+  var editor = ace.edit("editor");
+  editor.setTheme("ace/theme/monokai");
+  editor.setOptions({
+    fontSize: "12pt",
+  });
+
   var KodeRunr = function(){
-    this.defaultEditor();
-    this.setLang($("#ext").val());
+    this.editor = ace.edit("editor");
+    this.setLang($("#lang").val());
   }
 
   KodeRunr.prototype.defaultEditor = function() {
@@ -28,13 +27,13 @@ $(function() {
   };
 
   KodeRunr.prototype.setLang = function(lang) {
-    [this.ext, this.version] = lang.split(" ")
-    this.editor.getSession().setMode("ace/mode/" + LANG_MAPPING[this.ext]);
+    [this.lang, this.version] = lang.split(" ")
+    this.editor.getSession().setMode("ace/mode/" + this.lang);
   };
 
   KodeRunr.prototype.runCode = function(evt) {
     var sourceCode = this.editor.getValue();
-    var runnable = { ext: this.ext, source: sourceCode };
+    var runnable = { lang: this.lang, source: sourceCode };
 
     if (this.version) {
       runnable.version = this.version;
@@ -78,7 +77,7 @@ $(function() {
   KodeRunr.prototype.saveCode = function(event) {
     var sourceCode = this.editor.getValue();
 
-    var runnable = { ext: this.ext, source: sourceCode };
+    var runnable = { lang: this.lang, source: sourceCode };
     if (this.version) {
       runnable.version = this.version
     }
@@ -94,11 +93,11 @@ $(function() {
 
   var sourceCodeCache = sourceCodeCache || {};
   sourceCodeCache.fetch = function(runner) {
-    return localStorage.getItem(runner.ext)
+    return localStorage.getItem(runner.lang)
   }
 
   sourceCodeCache.store = function(runner){
-    localStorage.setItem(runner.ext, runner.editor.getValue())
+    localStorage.setItem(runner.lang, runner.editor.getValue())
   }
 
   var runner = new KodeRunr();
@@ -107,11 +106,11 @@ $(function() {
   if (codeID) {
     $.get(ROUTERS.FETCH + "?codeID=" + codeID, function(msg) {
       var data = JSON.parse(msg);
-      var lang = data.ext;
+      var lang = data.lang;
       if (data.version) {
         lang = lang + " " + data.version;
       }
-      $("#ext").val(lang);
+      $("#lang").val(lang);
       runner.setLang(lang);
       runner.editor.setValue(data.source, 1);
       runner.codeID = codeID;
@@ -143,7 +142,7 @@ $(function() {
     }
   });
 
-  $("#ext").on("change", function() {
+  $("#lang").on("change", function() {
     // Empty the screen
     sourceCodeCache.store(runner)
     runner.editor.setValue("", undefined);

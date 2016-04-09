@@ -14,7 +14,7 @@ import (
 
 // Runner runs the code
 type Runner struct {
-	Ext     string `json:"ext"`
+	Lang    string `json:"lang"`
 	Source  string `json:"source"`
 	Version string `json:"version"`
 	Timeout int    `json:"timeout"` // How long is the code going to run
@@ -36,7 +36,7 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 		"--cpu-quota=15000", // a container can use 15% of a CPU resource
 		"--memory='50mb'",   // use 50mb mem
 		"--name", uuid,      // Give the runner a name so we can force kill it accordingly
-		"koderunr", r.Ext, r.Source}
+		"koderunr", r.Lang, r.Source}
 	if r.Version != "" {
 		execArgs = append(execArgs, r.Version)
 	}

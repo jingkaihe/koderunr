@@ -50,7 +50,7 @@ func (s *Server) HandleRunCode(w http.ResponseWriter, r *http.Request) {
 // HandleSaveCode saves the source code and returns a ID.
 func (s *Server) HandleSaveCode(w http.ResponseWriter, r *http.Request) {
 	runner := Runner{
-		Ext:     r.FormValue("ext"),
+		Lang:    r.FormValue("lang"),
 		Source:  r.FormValue("source"),
 		Version: r.FormValue("version"),
 	}
@@ -96,7 +96,7 @@ func (s *Server) HandleFetchCode(w http.ResponseWriter, r *http.Request) {
 // HandleReg fetch the code from the client and save it in Redis
 func (s *Server) HandleReg(w http.ResponseWriter, r *http.Request) {
 	runner := Runner{
-		Ext:     r.FormValue("ext"),
+		Lang:    r.FormValue("lang"),
 		Source:  r.FormValue("source"),
 		Version: r.FormValue("version"),
 		Timeout: 15,
