@@ -2,7 +2,7 @@ package client
 
 import (
 	"bufio"
-	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -38,7 +38,7 @@ func NewRunner(version, fName string) (r *Runner, err error) {
 	lang := extToLang[ext]
 
 	if lang == "" {
-		err = errors.New("%s extension is not supported")
+		err = fmt.Errorf("%s extension is not supported", ext)
 		return
 	}
 
