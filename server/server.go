@@ -77,6 +77,7 @@ func (s *Server) HandleSaveCode(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleFetchCode loads the code by codeID and returns the source code to user
+// Only used by web interface at the moment.
 func (s *Server) HandleFetchCode(w http.ResponseWriter, r *http.Request) {
 	codeID := r.FormValue("codeID")
 
@@ -90,6 +91,7 @@ func (s *Server) HandleFetchCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.Write(value)
 }
 

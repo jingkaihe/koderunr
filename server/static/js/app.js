@@ -18,14 +18,6 @@ $(function() {
     this.setLang($("#lang").val());
   }
 
-  KodeRunr.prototype.defaultEditor = function() {
-    this.editor = ace.edit("editor");
-    this.editor.setTheme("ace/theme/monokai");
-    this.editor.setOptions({
-      fontSize: "12pt",
-    });
-  };
-
   KodeRunr.prototype.setLang = function(lang) {
     [this.lang, this.version] = lang.split(" ")
     this.editor.getSession().setMode("ace/mode/" + this.lang);
@@ -104,12 +96,12 @@ $(function() {
   var codeID = window.location.hash.substring(1);
 
   if (codeID) {
-    $.get(ROUTERS.FETCH + "?codeID=" + codeID, function(msg) {
-      var data = JSON.parse(msg);
+    $.get(ROUTERS.FETCH + "?codeID=" + codeID, function(data) {
       var lang = data.lang;
       if (data.version) {
         lang = lang + " " + data.version;
       }
+
       $("#lang").val(lang);
       runner.setLang(lang);
       runner.editor.setValue(data.source, 1);
