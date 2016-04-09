@@ -57,10 +57,14 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	defer DockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID, Force: true})
 
 	successChan := make(chan struct{})
+	errorChan := make(chan error)
+
 	go func() {
 		_, err := DockerClient.WaitContainer(container.ID)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
+			errorChan <- err
+			return
 		}
 		successChan <- struct{}{}
 	}()
@@ -69,15 +73,18 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 		err = r.attachContainer(container.ID, stdoutWriter, stdinReader)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Container %s cannot be attached - %v\n", uuid, err)
-			// TODO send something to error chan
 		}
 	}()
 
 	select {
 	case <-successChan:
-		fmt.Println("The program is executed successfully")
+		fmt.Fprintf(os.Stdout, "Container %s is executed successfully\n", uuid)
+	case err := <-errorChan:
+		fmt.Fprintf(os.Stdout, "Container %s failed caused by - %v\n", uuid, err)
 	case <-time.After(time.Duration(r.Timeout) * time.Second):
-		fmt.Println("Timeout is timeout")
+		msg := fmt.Sprintf("Container %s is terminated caused by 15 sec timeout\n", uuid)
+		fmt.Fprintf(os.Stderr, msg)
+		output <- msg
 	}
 }
 
