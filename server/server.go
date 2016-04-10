@@ -143,10 +143,11 @@ func (s *Server) HandleLangs(w http.ResponseWriter, r *http.Request) {
 Supported Languages:
   Ruby - 2.3.0
   Ruby - 1.9.3-p550
+  Python - 2.7.6
+  Python - 3.5.0
+  C - GCC 4.9
   Go - 1.6
   Elixir - 1.2.3
-  Python - 2.7.6
-  C
 `
 	text = strings.TrimSpace(text)
 
