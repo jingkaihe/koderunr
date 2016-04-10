@@ -150,13 +150,18 @@ func getDockerClient() (*docker.Client, error) {
 }
 
 func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
+	cmd := []string{r.Lang, r.Source, uuid}
+
+	if r.Version != "" {
+		cmd = append(cmd, r.Version)
+	}
 	return DockerClient.CreateContainer(docker.CreateContainerOptions{
 		Name: uuid,
 		Config: &docker.Config{
 			Image:           "koderunr",
 			NetworkDisabled: true,
 			OpenStdin:       true,
-			Cmd:             []string{r.Lang, r.Source},
+			Cmd:             cmd,
 		},
 	})
 }

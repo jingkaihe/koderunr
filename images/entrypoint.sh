@@ -3,20 +3,21 @@ set -e
 
 ext=$1
 source_code=$2
+fname=$3
 
 case "$ext" in
   "go" )
-    touch runner.go
-    echo "$source_code" > runner.go
-    go run runner.go ;;
+    touch $uuid.go
+    echo "$source_code" > $uuid.go
+    go run $uuid.go ;;
   "c" )
-    touch runner.c
-    echo "$source_code" > runner.c
-    cc runner.c
+    touch $uuid.c
+    echo "$source_code" > $uuid.c
+    cc $uuid.c
     ./a.out ;;
   "ruby" )
-    if [[ -n "$3" ]]; then
-      rb_version=$3
+    if [[ -n "$4" ]]; then
+      rb_version=$4
       rb_versions=($(cd ~/.rbenv/versions && ls -d */))
       for version in $rb_versions
       do
@@ -29,15 +30,15 @@ case "$ext" in
       rbenv global $rb_version
     fi
 
-    touch runner.rb
-    echo "$source_code" > runner.rb
-    ruby runner.rb ;;
+    touch $uuid.rb
+    echo "$source_code" > $uuid.rb
+    ruby $uuid.rb ;;
   "python" )
-    touch runner.py
-    echo "$source_code" > runner.py
-    python runner.py ;;
+    touch $uuid.py
+    echo "$source_code" > $uuid.py
+    python $uuid.py ;;
   "elixir" )
-    touch runner.ex
-    echo "$source_code" > runner.ex
-    elixir runner.ex ;;
+    touch $uuid.ex
+    echo "$source_code" > $uuid.ex
+    elixir $uuid.ex ;;
 esac
