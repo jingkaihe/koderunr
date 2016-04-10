@@ -1,4 +1,4 @@
 #!/bin/sh
 SHA=`git rev-parse --short HEAD`
 
-echo 0.1.5-$SHA
+echo 0.1.6-$SHA

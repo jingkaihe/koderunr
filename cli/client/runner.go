@@ -23,13 +23,14 @@ type Runner struct {
 }
 
 var extToLang = map[string]string{
-	".rb":  "ruby",
-	".py":  "python",
-	".ex":  "elixir",
-	".iex": "elixir",
-	".c":   "c",
-	".cc":  "c",
-	".go":  "go",
+	".rb":    "ruby",
+	".py":    "python",
+	".swift": "swift",
+	".ex":    "elixir",
+	".iex":   "elixir",
+	".c":     "c",
+	".cc":    "c",
+	".go":    "go",
 }
 
 // NewRunner create a new runner
