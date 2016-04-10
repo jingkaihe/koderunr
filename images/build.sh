@@ -2,7 +2,7 @@
 
 set -e
 
-platforms=(python ruby go erl c)
+platforms=(python ruby go erl c swift)
 
 for platform in "${platforms[@]}"
 do
