@@ -150,6 +150,7 @@ func getDockerClient() (*docker.Client, error) {
 }
 
 var imageMapper = map[string]string{
+	"swift":  "koderunr-swift",
 	"ruby":   "koderunr-ruby",
 	"python": "koderunr-python",
 	"go":     "koderunr-go",
