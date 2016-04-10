@@ -149,8 +149,20 @@ func getDockerClient() (*docker.Client, error) {
 	return docker.NewClient(endpoint)
 }
 
+var imageMapper = map[string]string{
+	"ruby":   "koderunr-ruby",
+	"python": "koderunr-python",
+	"go":     "koderunr-go",
+	"c":      "koderunr-c",
+	"elixir": "koderunr-erl",
+}
+
+func (r *Runner) image() string {
+	return imageMapper[r.Lang]
+}
+
 func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
-	cmd := []string{r.Lang, r.Source, uuid}
+	cmd := []string{r.Source, uuid}
 
 	if r.Version != "" {
 		cmd = append(cmd, r.Version)
@@ -158,7 +170,7 @@ func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
 	return DockerClient.CreateContainer(docker.CreateContainerOptions{
 		Name: uuid,
 		Config: &docker.Config{
-			Image:           "koderunr",
+			Image:           r.image(),
 			NetworkDisabled: true,
 			OpenStdin:       true,
 			Cmd:             cmd,

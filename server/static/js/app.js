@@ -19,8 +19,20 @@ $(function() {
   }
 
   KodeRunr.prototype.setLang = function(lang) {
-    [this.lang, this.version] = lang.split(" ")
-    this.editor.getSession().setMode("ace/mode/" + this.lang);
+    [this.lang, this.version] = lang.split(" ");
+
+    var mode
+    switch (this.lang) {
+      case "go":
+        mode = "golang";
+        break;
+      case "c":
+        mode = "c_cpp";
+        break;
+      default:
+        mode = this.lang;
+    }
+    this.editor.getSession().setMode("ace/mode/" + mode);
   };
 
   KodeRunr.prototype.runCode = function(evt) {
