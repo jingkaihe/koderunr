@@ -180,7 +180,7 @@ func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
 
 func (r *Runner) startContainer(containerID string) error {
 	return DockerClient.StartContainer(containerID, &docker.HostConfig{
-		CPUQuota: 15000,
+		CPUQuota: 40000,
 		Memory:   50 * 1024 * 1024,
 	})
 }
