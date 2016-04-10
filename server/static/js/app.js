@@ -19,7 +19,9 @@ $(function() {
   }
 
   KodeRunr.prototype.setLang = function(lang) {
-    [this.lang, this.version] = lang.split(" ");
+    langs = lang.split(" ");
+    this.lang = langs[0];
+    this.version = langs[1];
 
     var mode
     switch (this.lang) {
