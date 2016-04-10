@@ -1,13 +1,8 @@
-FROM ubuntu
+FROM buildpack-deps:jessie-scm
 MAINTAINER Jingkai He
 
-# Install Golang
 RUN apt-get update -y
 RUN apt-get install software-properties-common -y
-
-RUN add-apt-repository ppa:ubuntu-lxc/lxd-stable -y
-RUN apt-get update -y
-RUN apt-get install golang -y
 
 # Install Ruby
 RUN apt-get install python-software-properties -y
@@ -25,26 +20,16 @@ ENV CONFIGURE_OPTS --disable-install-doc
 RUN echo 'gem: --no-rdoc --no-ri' >> /.gemrc
 
 # Install MRIs
-RUN rbenv install 2.3.0
-RUN rbenv install 1.9.3-p550
+ADD ./versions.txt /root/versions.txt
+RUN xargs -L 1 rbenv install < /root/versions.txt
 
 RUN rbenv global 2.3.0
 RUN rbenv rehash
 ENV PATH /root/.rbenv/shims:$PATH
 
-# Install Erlang and Elixir
-RUN wget https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb
-RUN dpkg -i erlang-solutions_1.0_all.deb
-RUN apt-get update -y
-RUN apt-get install esl-erlang -y
-RUN apt-get install elixir -y
-
 # Tidy up
 RUN apt-get clean
-RUN locale-gen "en_US.UTF-8"
-ENV LC_ALL en_US.UTF-8
 
-# Entry point
 COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh
 

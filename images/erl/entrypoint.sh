@@ -2,8 +2,8 @@
 set -e
 
 source_code=$1
-fname=$2.go
+fname=$2.ex
 
 touch $fname
 echo "$source_code" > $fname
-go run $fname
+elixir $fname
