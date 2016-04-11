@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"strings"
 
@@ -61,7 +60,9 @@ func (l Langs) Exec(args []string) int {
 	}
 
 	// TODO: Build the URI in a classy way
-	resp, err := http.Get(endpoint + "langs/")
+	httpClient := client.NewHTTPClient(60, 60)
+	resp, err := httpClient.Get(endpoint + "langs/")
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
