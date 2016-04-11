@@ -16,10 +16,11 @@ const TestEndPoint = "http://127.0.0.1:8080/"
 
 // Runner contains the code to be run
 type Runner struct {
-	lang    string
-	source  string
-	version string
-	uuid    string
+	lang       string
+	source     string
+	version    string
+	uuid       string
+	httpClient http.Client
 }
 
 var extToLang = map[string]string{
@@ -44,11 +45,19 @@ func NewRunner(version, fName string) (r *Runner, err error) {
 	}
 
 	ctx, err := ioutil.ReadFile(fName)
-	r = &Runner{
-		lang:    lang,
-		source:  string(ctx),
-		version: version,
+	if err != nil {
+		return
 	}
+
+	client := NewHTTPClient(60, 60)
+
+	r = &Runner{
+		lang:       lang,
+		source:     string(ctx),
+		version:    version,
+		httpClient: client,
+	}
+
 	return
 }
 
@@ -58,7 +67,8 @@ func (r *Runner) FetchUUID(endpoint string) error {
 	if r.version != "" {
 		params["version"] = []string{r.version}
 	}
-	resp, err := http.PostForm(endpoint+"register/", params)
+
+	resp, err := r.httpClient.PostForm(endpoint+"register/", params)
 	if err != nil {
 		return err
 	}
@@ -79,7 +89,7 @@ func (r *Runner) Run(endpoint string) error {
 	go r.fetchStdin(endpoint)
 
 	// TODO: Build the URI in a classy way
-	resp, err := http.Get(endpoint + "run/?uuid=" + r.uuid)
+	resp, err := r.httpClient.Get(endpoint + "run/?uuid=" + r.uuid)
 	if err != nil {
 		return err
 	}
@@ -108,7 +118,7 @@ func (r *Runner) fetchStdin(endpoint string) error {
 
 		params := url.Values{"uuid": {r.uuid}, "input": {text}}
 
-		resp, err := http.PostForm(endpoint+"stdin/", params)
+		resp, err := r.httpClient.PostForm(endpoint+"stdin/", params)
 		if err != nil {
 			return err
 		}
