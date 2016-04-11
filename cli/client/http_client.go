@@ -31,7 +31,7 @@ func transportDial(network, addr string, openTime, readTime int) (net.Conn, erro
 	}
 
 	deadline := time.Now().Add(readTimeout)
-	conn.SetDeadline(deadline)
+	err = conn.SetDeadline(deadline)
 
-	return conn, nil
+	return conn, err
 }
