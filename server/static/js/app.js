@@ -7,6 +7,12 @@ var ROUTERS = {
 }
 
 $(function() {
+  var term = $('#stdio').terminal(undefined, {
+      name: 'KodeRunr',
+      height: 200,
+      prompt: 'kode> ',
+  });
+
   var editor = ace.edit("editor");
   editor.setTheme("ace/theme/monokai");
   editor.setOptions({
@@ -14,6 +20,8 @@ $(function() {
   });
 
   var KodeRunr = function(){
+    this.term = term;
+    this.term.focus(false);
     this.editor = ace.edit("editor");
     this.setLang($("#lang").val());
   }
@@ -45,36 +53,35 @@ $(function() {
       runnable.version = this.version;
     }
 
+    var runner = this;
     $.post(ROUTERS.REGISTER, runnable, function(uuid) {
       // Empty the output field
-      $("#streamingResult").text("");
-      $("#inputField").val("").focus();
-
+      runner.term.clear();
+      runner.term.focus();
       var evtSource = new EventSource(ROUTERS.RUN + "?evt=true&uuid=" + uuid);
       evtSource.onmessage = function(e) {
-        var text = $("#streamingResult").text();
-        $("#streamingResult").text(text + e.data);
+        var data = e.data;
+        var str = data.substring(0, data.length - 1);
+        runner.term.echo(str);
       }
 
-      $("#inputField").on("keydown", function(evt){
-        // Disable the arrow keys
-        if([37, 38, 39, 40].indexOf(evt.which) > -1) {
-            evt.preventDefault();
+      evtSource.onerror = function(e) {
+        if (uuid) {
+          uuid = undefined;
+          runner.term.echo("[[;green;]Completed!]");
+          runner.term.focus(false);
         }
-
-        if (evt.which == 13) {
-          var text = $(this).val();
-          var lastCarriageReturn = text.lastIndexOf("\n")
-          var input;
-          if (lastCarriageReturn == -1) {
-            input = text + "\n"
-          }else{
-            input = text.substr(lastCarriageReturn, text.length) + "\n"
+      }
+      // Get the command and send to stdin.
+      runner.term.on("keydown", function(e){
+        if (uuid) {
+          if (e.keyCode == 13) {
+            var cmd = runner.term.get_command() + "\n";
+            $.post(ROUTERS.STDIN, {
+              input: cmd,
+              uuid: uuid,
+            });
           }
-          $.post(ROUTERS.STDIN, {
-            input: input,
-            uuid: uuid
-          });
         }
       });
     });
@@ -152,7 +159,7 @@ $(function() {
     // Empty the screen
     sourceCodeCache.store(runner)
     runner.editor.setValue("", undefined);
-    $("#streamingResult").text("");
+    runner.term.clear();
 
     runner.setLang(this.value);
 

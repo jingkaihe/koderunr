@@ -24,31 +24,3 @@
   height: 100%;
   margin: auto;
 }
-
-div.stdin {
-  width: 50%;
-  height: 80%;
-  float: left;
-}
-
-div.stdout {
-  margin-left: 50%;
-  width: 50%;
-  height: 80%;
-}
-
-#streamingResult{
-  width: 98%;
-  height: 93%;
-  background-color: #272822;
-  color: #F8F8F2;
-  font-size: 15px;
-}
-
-#inputField{
-  width: 98%;
-  height: 93%;
-  background-color: #272822;
-  color: #F8F8F2;
-  font-size: 15px;
-}
