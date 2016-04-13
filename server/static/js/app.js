@@ -10,7 +10,8 @@ $(function() {
   var term = $('#stdio').terminal(undefined, {
       name: 'KodeRunr',
       height: 200,
-      prompt: 'kode> ',
+      prompt: '> ',
+      greetings: false,
   });
 
   var editor = ace.edit("editor");
