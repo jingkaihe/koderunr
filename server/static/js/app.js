@@ -9,13 +9,12 @@ var ROUTERS = {
 $(function() {
   var term = $('#stdio').terminal(undefined, {
       name: 'KodeRunr',
-      height: 200,
       prompt: '> ',
       greetings: false,
   });
 
   var editor = ace.edit("editor");
-  editor.setTheme("ace/theme/monokai");
+  editor.setTheme("ace/theme/cobalt");
   editor.setOptions({
     fontSize: "12pt",
   });

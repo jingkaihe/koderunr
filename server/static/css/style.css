@@ -1,3 +1,18 @@
+.ace_editor, .ace_editor * {
+    font-family:  'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+    font-size:12px;
+    font-weight: lighter;
+    color:inherit;
+}
+
+.terminal div{
+  margin-bottom: 10px;
+}
+
+.terminal-output, .cmd{
+  font-size: 10pt !important;
+}
+
 #content {
   width: 100%;
 }
@@ -5,22 +20,23 @@
 #editor {
   position: fixed;
   float: left;
-  width: 100%;
-  height: 60%;
+  width: 60%;
+  height: 92%;
   z-index: 2;
+}
+
+#stdio {
+  position: fixed;
+  margin-left: 60%;
+  width: 40%;
+  height: 100%;
 }
 
 #result {
   position: fixed;
   bottom: 0;
   width: 100%;
-  height: 37%;
+  height: 5%;
   padding-top: 100px;
   z-index: 1;
-}
-
-.stdio {
-  width: 100%;
-  height: 100%;
-  margin: auto;
 }
