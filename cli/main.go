@@ -21,6 +21,7 @@ func main() {
 
 	cli.Cmds = map[string]commands.Command{
 		"run":       commands.Run{},
+		"share":     commands.Share{},
 		"languages": commands.Langs{},
 	}
 

@@ -44,13 +44,12 @@ func (r Run) ShortDescription() string {
 	return "kode run [filename] [options] - Run the code remotely on runner and returns the result asynchronously"
 }
 
-// Exec is the command that will execute the Run command
-func (r Run) Exec(args []string) int {
+func createRunnerFromArgs(args []string) (*client.Runner, error) {
 	// Parse the version and endpoint from the arguments passed in
 	flagargs := args[1:]
 
 	runFlagSet := flag.NewFlagSet("run", flag.ExitOnError)
-	endpointFlag := runFlagSet.String("endpoint", "http://koderunr.tech/api/", "Endpoint of the API")
+	endpointFlag := runFlagSet.String("endpoint", "http://koderunr.tech/", "Endpoint of the API")
 	langVersionFlag := runFlagSet.String("version", "", "Version of the language")
 	debugFlag := runFlagSet.Bool("debug", false, "Debug mode use local endpoint")
 
@@ -64,20 +63,25 @@ func (r Run) Exec(args []string) int {
 		endpoint = *endpointFlag
 	}
 
+	return client.NewRunner(*langVersionFlag, args[0], endpoint)
+}
+
+// Exec is the command that will execute the Run command
+func (r Run) Exec(args []string) int {
 	// Started running the code
-	runner, err := client.NewRunner(*langVersionFlag, args[0])
+	runner, err := createRunnerFromArgs(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
 	}
 
-	err = runner.FetchUUID(endpoint)
+	err = runner.FetchUUID()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: Failed to fetch UUID - %v\n", err)
 		return 1
 	}
 
-	err = runner.Run(endpoint)
+	err = runner.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: Failed to execute the code - %v\n", err)
 		return 1

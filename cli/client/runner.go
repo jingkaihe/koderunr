@@ -20,6 +20,7 @@ type Runner struct {
 	source     string
 	version    string
 	uuid       string
+	endpoint   string
 	httpClient http.Client
 }
 
@@ -35,7 +36,7 @@ var extToLang = map[string]string{
 }
 
 // NewRunner create a new runner
-func NewRunner(version, fName string) (r *Runner, err error) {
+func NewRunner(version, fName, endpoint string) (r *Runner, err error) {
 	ext := path.Ext(fName)
 	lang := extToLang[ext]
 
@@ -55,6 +56,7 @@ func NewRunner(version, fName string) (r *Runner, err error) {
 		lang:       lang,
 		source:     string(ctx),
 		version:    version,
+		endpoint:   endpoint,
 		httpClient: client,
 	}
 
@@ -62,13 +64,13 @@ func NewRunner(version, fName string) (r *Runner, err error) {
 }
 
 // FetchUUID fetch the UUID from the API endpoint
-func (r *Runner) FetchUUID(endpoint string) error {
+func (r *Runner) FetchUUID() error {
 	params := url.Values{"lang": {r.lang}, "source": {string(r.source)}}
 	if r.version != "" {
 		params["version"] = []string{r.version}
 	}
 
-	resp, err := r.httpClient.PostForm(endpoint+"register/", params)
+	resp, err := r.httpClient.PostForm(r.endpoint+"api/register/", params)
 	if err != nil {
 		return err
 	}
@@ -84,12 +86,35 @@ func (r *Runner) FetchUUID(endpoint string) error {
 	return nil
 }
 
+// Share the code
+func (r *Runner) Share() (string, error) {
+	params := url.Values{"lang": {r.lang}, "source": {string(r.source)}}
+	if r.version != "" {
+		params["version"] = []string{r.version}
+	}
+
+	resp, err := r.httpClient.PostForm(r.endpoint+"api/save/", params)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	shareURL := fmt.Sprintf("%s#%s", r.endpoint, string(body))
+	return shareURL, nil
+}
+
 // Run execute the runner
-func (r *Runner) Run(endpoint string) error {
-	go r.fetchStdin(endpoint)
+func (r *Runner) Run() error {
+	go r.fetchStdin()
 
 	// TODO: Build the URI in a classy way
-	resp, err := r.httpClient.Get(endpoint + "run/?uuid=" + r.uuid)
+	resp, err := r.httpClient.Get(r.endpoint + "api/run/?uuid=" + r.uuid)
 	if err != nil {
 		return err
 	}
@@ -104,7 +129,7 @@ func (r *Runner) Run(endpoint string) error {
 	return nil
 }
 
-func (r *Runner) fetchStdin(endpoint string) error {
+func (r *Runner) fetchStdin() error {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -118,7 +143,7 @@ func (r *Runner) fetchStdin(endpoint string) error {
 
 		params := url.Values{"uuid": {r.uuid}, "input": {text}}
 
-		resp, err := r.httpClient.PostForm(endpoint+"stdin/", params)
+		resp, err := r.httpClient.PostForm(r.endpoint+"api/stdin/", params)
 		if err != nil {
 			return err
 		}
