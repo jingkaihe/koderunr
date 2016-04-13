@@ -15,10 +15,11 @@ var DockerClient *docker.Client
 
 // Runner runs the code
 type Runner struct {
-	Lang    string `json:"lang"`
-	Source  string `json:"source"`
-	Version string `json:"version"`
-	Timeout int    `json:"timeout"` // How long is the code going to run
+	Lang          string `json:"lang"`
+	Source        string `json:"source"`
+	Version       string `json:"version"`
+	Timeout       int    `json:"timeout"` // How long is the code going to run
+	closeNotifier <-chan bool
 }
 
 // Runnerthrottle Limit the max throttle for runner
@@ -77,6 +78,9 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	}()
 
 	select {
+	case <-r.closeNotifier:
+		DockerClient.StopContainer(container.ID, 0)
+		fmt.Fprintf(os.Stdout, "Container %s is stopped since the streamming has been halted\n", uuid)
 	case <-successChan:
 		fmt.Fprintf(os.Stdout, "Container %s is executed successfully\n", uuid)
 	case err := <-errorChan:

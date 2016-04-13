@@ -34,6 +34,10 @@ func (s *Server) HandleRunCode(w http.ResponseWriter, r *http.Request) {
 	runner := &Runner{}
 	json.Unmarshal(value, runner)
 
+	// for close the container right away after the request is halted
+	closeNotifier := w.(http.CloseNotifier).CloseNotify()
+	runner.closeNotifier = closeNotifier
+
 	isEvtStream := r.FormValue("evt") == "true"
 	client := NewClient(runner, s.redisPool.Get(), uuid)
 
