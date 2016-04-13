@@ -18,11 +18,11 @@
         alt="Fork me on GitHub"
         data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png">
     </a>
-    <div id="content" class="container-fluid">
+    <div id="content" class="container">
       <div class="row">
         <div class="col-md-8">
           <div id="result">
-            <span>Lang:&nbsp;</span>
+            <span>Languages:&nbsp;</span>
             <select id="lang">
               <option value="ruby 2.3.0">Ruby 2.3.0</option>
               <option value="ruby 1.9.3-p550">Ruby 1.9.3-p550</option>
@@ -45,7 +45,11 @@
 puts "input a number"
 STDOUT.flush
 n = gets.to_i rescue 3
-n.times { |i| puts "hello world - #{i}"; STDOUT.flush; sleep 1; }</div>
+n.times do |i|
+  puts "hello world - #{i}"
+  STDOUT.flush
+  sleep 1
+end</div>
         </div>
         <div class="col-md-4">
           <div id="stdio" class="terminal"></div>

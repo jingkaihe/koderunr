@@ -1,3 +1,11 @@
+body {
+  background-color: #002240;
+  color: rgb(58, 210, 27);
+}
+
+button {
+  color: black;
+}
 .terminal div{
   margin-bottom: 10px;
 }

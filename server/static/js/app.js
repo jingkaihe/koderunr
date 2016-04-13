@@ -17,6 +17,7 @@ $(function() {
   editor.setTheme("ace/theme/cobalt");
   editor.setOptions({
     fontSize: "10pt",
+    tabSize: 2,
   });
 
   var KodeRunr = function(){
