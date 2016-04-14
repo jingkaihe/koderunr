@@ -11,18 +11,53 @@ TARGETS = [
 
 VERSION = `./version`.chomp
 
-desc "build the kode cli"
-task :build do
+desc "show supported OS and Arch"
+task :list do
+  puts "Supported OS and Arch:"
+  TARGETS.each do |target|
+    puts "  * #{target[:os]} #{target[:arch]}"
+  end
+end
+
+desc "cross compile the Kode cli"
+task :cross_compile do
   puts "Building #{VERSION} kode cli"
   FileUtils.mkdir_p "build"
 
   TARGETS.each do |target|
-    build(target)
+    ok = build(target)
+    exit 1 unless ok
   end
 
   ok = system("tar -zcvf ./build/kode-#{VERSION}.tar.gz ./build/*")
 
   puts "Build successfully!" if ok
+end
+
+desc "build the Kode cli for a specific OS and Arch"
+task :build, [:os, :arch] do |_, args|
+  os = args[:os]
+  arch = args[:arch]
+  target = {os: os, arch: arch}
+
+  unless TARGETS.include?(target)
+    puts "Sorry currently does not support #{os} and #{arch}"
+    exit 1
+  end
+
+  FileUtils.mkdir_p "build"
+
+  if build(target)
+    puts "Build successfully!"
+  else
+    puts "Build failed..."
+    exit 1
+  end
+end
+
+desc "Clear the build"
+task :clean do
+  FileUtils.rm_rf "build"
 end
 
 def build(target)
@@ -36,7 +71,5 @@ def build(target)
   vars << "GO386=#{target[:go386]}" if target[:go386]
   vars << "GOARM=#{target[:goarm]}" if target[:goarm]
 
-  ok = system("#{vars.join(' ')} go build #{args.join(' ')}")
-
-  exit 1 unless ok
+  return system("#{vars.join(' ')} go build #{args.join(' ')}")
 end
