@@ -179,6 +179,7 @@ func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
 			NetworkDisabled: true,
 			OpenStdin:       true,
 			Cmd:             cmd,
+			KernelMemory:    1024 * 1024 * 4,
 		},
 	})
 }
@@ -186,7 +187,7 @@ func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
 func (r *Runner) startContainer(containerID string) error {
 	return DockerClient.StartContainer(containerID, &docker.HostConfig{
 		CPUQuota: 40000,
-		Memory:   50 * 1024 * 1024,
+		Memory:   50 * 1024 * 1024, // so the memory swap will be the same size
 	})
 }
 
