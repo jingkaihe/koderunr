@@ -41,11 +41,12 @@ func main() {
 		http.Handle("/", http.FileServer(http.Dir("static")))
 	}
 
-	http.HandleFunc("/langs/", s.HandleLangs)
-	http.HandleFunc("/run/", s.HandleRunCode)
-	http.HandleFunc("/save/", s.HandleSaveCode)
-	http.HandleFunc("/register/", s.HandleReg)
-	http.HandleFunc("/stdin/", s.HandleStdin)
-	http.HandleFunc("/fetch/", s.HandleFetchCode)
+	http.HandleFunc("/api/langs/", s.HandleLangs)
+	http.HandleFunc("/api/run/", s.HandleRunCode)
+	http.HandleFunc("/api/save/", s.HandleSaveCode)
+	http.HandleFunc("/api/register/", s.HandleReg)
+	http.HandleFunc("/api/stdin/", s.HandleStdin)
+	http.HandleFunc("/api/fetch/", s.HandleFetchCode)
+
 	http.ListenAndServe(":8080", nil)
 }

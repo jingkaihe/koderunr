@@ -1,9 +1,9 @@
 var ROUTERS = {
-  RUN: "/run/",
-  SAVE: "/save/",
-  STDIN: "/stdin/",
-  REGISTER: "/register/",
-  FETCH: "/fetch/"
+  RUN: "/api/run/",
+  SAVE: "/api/save/",
+  STDIN: "/api/stdin/",
+  REGISTER: "/api/register/",
+  FETCH: "/api/fetch/"
 }
 
 $(function() {
