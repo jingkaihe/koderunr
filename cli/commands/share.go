@@ -3,6 +3,8 @@ package commands
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 )
 
@@ -46,6 +48,17 @@ func (s Share) Exec(args []string) int {
 		fmt.Fprintf(os.Stderr, "Error: Failed to share the code - %v\n", err)
 		return 1
 	}
-	fmt.Println(url)
+
+	if isOSDarwin() {
+		exec.Command("open", url).Run()
+
+	} else {
+		fmt.Println(url)
+	}
+
 	return 0
+}
+
+func isOSDarwin() bool {
+	return runtime.GOOS == "darwin"
 }
