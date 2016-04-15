@@ -180,6 +180,7 @@ func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
 			OpenStdin:       true,
 			Cmd:             cmd,
 			KernelMemory:    1024 * 1024 * 4,
+			PidsLimit:       5,
 		},
 	})
 }
