@@ -4,14 +4,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
 	"github.com/garyburd/redigo/redis"
 )
-
-// DockerClient for running code
-var DockerClient *docker.Client
 
 // Runner runs the code
 type Runner struct {
@@ -30,14 +27,33 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	Runnerthrottle <- struct{}{}
 	defer func() { <-Runnerthrottle }()
 
-	container, err := r.createContainer(uuid)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: Container %s cannot be created - %v\n", uuid, err)
-		return
+	execArgs := []string{
+		"run",
+		"-i",            // run in interactive mode
+		"--rm",          // automatically remove the container when it exits
+		"--net", "none", // disables all incoming and outgoing networking
+		"--cpu-quota=15000", // a container can use 15% of a CPU resource
+		"--memory='50mb'",   // use 50mb mem
+		"--name", uuid,      // Give the runner a name so we can force kill it accordingly
+		r.image(),
+		r.Source,
+		uuid,
 	}
 
+	if r.Version != "" {
+		execArgs = append(execArgs, r.Version)
+	}
+
+	cmd := exec.Command("docker", execArgs...)
+
 	stdoutReader, stdoutWriter := io.Pipe()
-	stdinReader, stdinWriter := io.Pipe()
+	cmd.Stdout = stdoutWriter
+	cmd.Stderr = stdoutWriter
+
+	stdinWriter, err := cmd.StdinPipe()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v", err)
+	}
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v", err)
@@ -49,37 +65,19 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	go pipeStdin(conn, uuid, stdinWriter)
 	go pipeStdout(stdoutReader, output)
 
-	// Start running the container
-	err = r.startContainer(container.ID)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: Container %s cannot be started - %v\n", uuid, err)
-		return
-	}
-	defer DockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID, Force: true})
-
 	successChan := make(chan struct{})
 	errorChan := make(chan error)
 
-	go func() {
-		_, err := DockerClient.WaitContainer(container.ID)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			errorChan <- err
-			return
-		}
-		successChan <- struct{}{}
-	}()
+	cmd.Start()
+	// Force kill the container
+	defer exec.Command("docker", "rm", "-f", uuid).Run()
 
-	go func() {
-		err = r.attachContainer(container.ID, stdoutWriter, stdinReader)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Container %s cannot be attached - %v\n", uuid, err)
-		}
-	}()
+	go func(cmd *exec.Cmd) {
+		errorChan <- cmd.Wait()
+	}(cmd)
 
 	select {
 	case <-r.closeNotifier:
-		DockerClient.StopContainer(container.ID, 0)
 		fmt.Fprintf(os.Stdout, "Container %s is stopped since the streamming has been halted\n", uuid)
 	case <-successChan:
 		fmt.Fprintf(os.Stdout, "Container %s is executed successfully\n", uuid)
@@ -92,7 +90,7 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	}
 }
 
-func pipeStdin(conn redis.Conn, uuid string, stdin *io.PipeWriter) {
+func pipeStdin(conn redis.Conn, uuid string, stdin io.WriteCloser) {
 	psc := redis.PubSubConn{Conn: conn}
 	psc.Subscribe(uuid + "#stdin")
 
@@ -139,20 +137,6 @@ func pipeStdout(stdout *io.PipeReader, output messages) {
 	}
 }
 
-func getDockerClient() (*docker.Client, error) {
-	dockerHost := os.Getenv("DOCKER_HOST")
-
-	// If DOCKER_HOST exists in env, using docker-machine
-	if dockerHost != "" {
-		return docker.NewClientFromEnv()
-	}
-
-	// Otherwise using sock connection
-	//TODO: Deal with the TLS case (even though you are not using it for now)
-	endpoint := "unix:///var/run/docker.sock"
-	return docker.NewClient(endpoint)
-}
-
 var imageMapper = map[string]string{
 	"swift":  "koderunr-swift",
 	"ruby":   "koderunr-ruby",
@@ -164,43 +148,4 @@ var imageMapper = map[string]string{
 
 func (r *Runner) image() string {
 	return imageMapper[r.Lang]
-}
-
-func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
-	cmd := []string{r.Source, uuid}
-
-	if r.Version != "" {
-		cmd = append(cmd, r.Version)
-	}
-	return DockerClient.CreateContainer(docker.CreateContainerOptions{
-		Name: uuid,
-		Config: &docker.Config{
-			Image:           r.image(),
-			NetworkDisabled: true,
-			OpenStdin:       true,
-			Cmd:             cmd,
-			KernelMemory:    1024 * 1024 * 4,
-			PidsLimit:       5,
-		},
-	})
-}
-
-func (r *Runner) startContainer(containerID string) error {
-	return DockerClient.StartContainer(containerID, &docker.HostConfig{
-		CPUQuota: 40000,
-		Memory:   50 * 1024 * 1024, // so the memory swap will be the same size
-	})
-}
-
-func (r *Runner) attachContainer(containerID string, stdoutWriter *io.PipeWriter, stdinReader *io.PipeReader) error {
-	return DockerClient.AttachToContainer(docker.AttachToContainerOptions{
-		Container:    containerID,
-		Stdin:        true,
-		Stdout:       true,
-		Stderr:       true,
-		Stream:       true,
-		OutputStream: stdoutWriter,
-		ErrorStream:  stdoutWriter,
-		InputStream:  stdinReader,
-	})
 }
