@@ -30,11 +30,12 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	execArgs := []string{
 		"run",
 		"-i",            // run in interactive mode
-		"--rm",          // automatically remove the container when it exits
 		"--net", "none", // disables all incoming and outgoing networking
-		"--cpu-quota=15000", // a container can use 15% of a CPU resource
-		"--memory='50mb'",   // use 50mb mem
-		"--name", uuid,      // Give the runner a name so we can force kill it accordingly
+		"--cpu-quota=40000", // a container can use 15% of a CPU resource
+		"--pids-limit=200",
+		"--memory='50mb'", // use 50mb mem
+		"--memory-swap=0",
+		"--name", uuid, // Give the runner a name so we can force kill it accordingly
 		r.image(),
 		r.Source,
 		uuid,
@@ -65,24 +66,25 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	go pipeStdin(conn, uuid, stdinWriter)
 	go pipeStdout(stdoutReader, output)
 
-	successChan := make(chan struct{})
-	errorChan := make(chan error)
-
 	cmd.Start()
-	// Force kill the container
+	// Kill the container
 	defer exec.Command("docker", "rm", "-f", uuid).Run()
 
+	done := make(chan error)
 	go func(cmd *exec.Cmd) {
-		errorChan <- cmd.Wait()
+		done <- cmd.Wait()
 	}(cmd)
 
 	select {
 	case <-r.closeNotifier:
 		fmt.Fprintf(os.Stdout, "Container %s is stopped since the streamming has been halted\n", uuid)
-	case <-successChan:
-		fmt.Fprintf(os.Stdout, "Container %s is executed successfully\n", uuid)
-	case err := <-errorChan:
-		fmt.Fprintf(os.Stdout, "Container %s failed caused by - %v\n", uuid, err)
+	case err := <-done:
+		if err == nil {
+			fmt.Fprintf(os.Stdout, "Container %s is executed successfully\n", uuid)
+		} else {
+			fmt.Fprintf(os.Stderr, "Container %s failed due to %v\n", uuid, err)
+		}
+
 	case <-time.After(time.Duration(r.Timeout) * time.Second):
 		msg := fmt.Sprintf("Container %s is terminated caused by 15 sec timeout\n", uuid)
 		fmt.Fprintf(os.Stderr, msg)
