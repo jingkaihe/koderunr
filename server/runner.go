@@ -164,7 +164,7 @@ func (r *Runner) createContainer(uuid string) (types.ContainerCreateResponse, er
 	resource := container.Resources{
 		CPUQuota:     40000,
 		Memory:       50 * 1024 * 1024,
-		PidsLimit:    200,
+		PidsLimit:    50,
 		KernelMemory: 4 * 1024 * 1024,
 	}
 
