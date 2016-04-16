@@ -1,13 +1,19 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"time"
 
+	dcli "github.com/docker/engine-api/client"
+	"github.com/docker/engine-api/types"
+	"github.com/docker/engine-api/types/container"
+	"github.com/docker/engine-api/types/network"
 	"github.com/garyburd/redigo/redis"
+	// "github.com/docker/engine-api/types/strslice"
+	"golang.org/x/net/context"
 )
 
 // Runner runs the code
@@ -17,63 +23,52 @@ type Runner struct {
 	Version       string `json:"version"`
 	Timeout       int    `json:"timeout"` // How long is the code going to run
 	closeNotifier <-chan bool
+	client        *dcli.Client
 }
 
 // Runnerthrottle Limit the max throttle for runner
 var Runnerthrottle chan struct{}
 
 // Run the code in the container
-func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
+func (r *Runner) Run(output messages, redisConn redis.Conn, uuid string) {
 	Runnerthrottle <- struct{}{}
 	defer func() { <-Runnerthrottle }()
 
-	execArgs := []string{
-		"run",
-		"-i",            // run in interactive mode
-		"--net", "none", // disables all incoming and outgoing networking
-		"--cpu-quota=40000", // a container can use 15% of a CPU resource
-		"--pids-limit=200",
-		"--memory='50mb'", // use 50mb mem
-		"--memory-swap=0",
-		"--name", uuid, // Give the runner a name so we can force kill it accordingly
-		r.image(),
-		r.Source,
-		uuid,
-	}
-
-	if r.Version != "" {
-		execArgs = append(execArgs, r.Version)
-	}
-
-	cmd := exec.Command("docker", execArgs...)
-
-	stdoutReader, stdoutWriter := io.Pipe()
-	cmd.Stdout = stdoutWriter
-	cmd.Stderr = stdoutWriter
-
-	stdinWriter, err := cmd.StdinPipe()
+	var err error
+	r.client, err = NewDockerClient()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return
 	}
 
+	resp, err := r.createContainer(uuid)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return
 	}
 
-	defer stdinWriter.Close()
-	defer stdoutWriter.Close()
+	err = r.startContainer(resp.ID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return
+	}
+	defer r.client.ContainerRemove(
+		context.Background(),
+		resp.ID,
+		types.ContainerRemoveOptions{Force: true},
+	)
 
-	go pipeStdin(conn, uuid, stdinWriter)
-	go pipeStdout(stdoutReader, output)
+	attachResponse, err := r.attachContainer(resp.ID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return
+	}
 
-	cmd.Start()
-	// Kill the container
-	defer exec.Command("docker", "rm", "-f", uuid).Run()
+	go pipeStdout(attachResponse.Reader, output)
+	go pipeStdin(redisConn, uuid, attachResponse.Conn)
 
 	done := make(chan error)
-	go func(cmd *exec.Cmd) {
-		done <- cmd.Wait()
-	}(cmd)
+	go r.waitContainer(uuid, done)
 
 	select {
 	case <-r.closeNotifier:
@@ -82,24 +77,20 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 		if err == nil {
 			fmt.Fprintf(os.Stdout, "Container %s is executed successfully\n", uuid)
 		} else {
-			fmt.Fprintf(os.Stderr, "Container %s failed due to %v\n", uuid, err)
+			output <- err.Error()
+			fmt.Fprintf(os.Stderr, "Container %s failed - %v\n", uuid, err)
 		}
-
-	case <-time.After(time.Duration(r.Timeout) * time.Second):
-		msg := fmt.Sprintf("Container %s is terminated caused by 15 sec timeout\n", uuid)
-		fmt.Fprintf(os.Stderr, msg)
-		output <- msg
 	}
 }
 
-func pipeStdin(conn redis.Conn, uuid string, stdin io.WriteCloser) {
-	psc := redis.PubSubConn{Conn: conn}
+func pipeStdin(redisConn redis.Conn, uuid string, stdin io.WriteCloser) {
+	psc := redis.PubSubConn{Conn: redisConn}
 	psc.Subscribe(uuid + "#stdin")
 
 	defer func() {
 		psc.Unsubscribe(uuid + "#stdin")
 		psc.Close()
-		conn.Close()
+		redisConn.Close()
 	}()
 
 StdinSubscriptionLoop:
@@ -115,13 +106,12 @@ StdinSubscriptionLoop:
 	fmt.Println("Stdin subscription closed")
 }
 
-func pipeStdout(stdout *io.PipeReader, output messages) {
+func pipeStdout(stdout *bufio.Reader, output messages) {
 	buffer := make([]byte, 512)
 	for {
 		n, err := stdout.Read(buffer)
 		if err != nil {
 			if err != io.EOF {
-				stdout.Close()
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			}
 
@@ -150,4 +140,78 @@ var imageMapper = map[string]string{
 
 func (r *Runner) image() string {
 	return imageMapper[r.Lang]
+}
+
+// NewDockerClient creates a new docker client using Unix sock connection
+func NewDockerClient() (*dcli.Client, error) {
+	defaultHeaders := map[string]string{"User-Agent": "engine-api-cli-1.23"}
+	return dcli.NewClient("unix:///var/run/docker.sock", "v1.23", nil, defaultHeaders)
+}
+
+func (r *Runner) createContainer(uuid string) (types.ContainerCreateResponse, error) {
+	cmd := []string{r.Source, uuid}
+
+	if r.Version != "" {
+		cmd = append(cmd, r.Version)
+	}
+	config := container.Config{
+		Image:           r.image(),
+		NetworkDisabled: true,
+		OpenStdin:       true,
+		Cmd:             cmd,
+	}
+
+	resource := container.Resources{
+		CPUQuota:     40000,
+		Memory:       50 * 1024 * 1024,
+		PidsLimit:    200,
+		KernelMemory: 4 * 1024 * 1024,
+	}
+
+	hostConfig := container.HostConfig{Resources: resource}
+
+	networkConfig := network.NetworkingConfig{}
+	return r.client.ContainerCreate(
+		context.Background(),
+		&config,
+		&hostConfig,
+		&networkConfig,
+		uuid,
+	)
+}
+
+func (r *Runner) startContainer(uuid string) error {
+	return r.client.ContainerStart(context.Background(), uuid)
+}
+
+func (r *Runner) attachContainer(uuid string) (types.HijackedResponse, error) {
+	return r.client.ContainerAttach(
+		context.Background(),
+		uuid,
+		types.ContainerAttachOptions{
+			Stream: true,
+			Stdin:  true,
+			Stdout: true,
+			Stderr: true,
+		},
+	)
+}
+
+func (r *Runner) waitContainer(uuid string, done chan<- error) {
+	timeout := time.Duration(r.Timeout) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	sig, err := r.client.ContainerWait(ctx, uuid)
+	if err != nil {
+		done <- err
+		return
+	}
+
+	if sig != 0 {
+		done <- fmt.Errorf("Runner exit with code %d", sig)
+		return
+	}
+
+	done <- nil
 }
