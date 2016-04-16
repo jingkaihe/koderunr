@@ -63,6 +63,10 @@ func (r *Runner) Run(output messages, redisConn redis.Conn, uuid string) {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return
 	}
+	defer func() {
+		attachResponse.CloseWrite()
+		attachResponse.Close()
+	}()
 
 	go pipeStdout(attachResponse.Reader, output)
 	go pipeStdin(redisConn, uuid, attachResponse.Conn)
@@ -77,8 +81,11 @@ func (r *Runner) Run(output messages, redisConn redis.Conn, uuid string) {
 		if err == nil {
 			fmt.Fprintf(os.Stdout, "Container %s is executed successfully\n", uuid)
 		} else {
-			output <- err.Error()
-			fmt.Fprintf(os.Stderr, "Container %s failed - %v\n", uuid, err)
+			msg := fmt.Sprintf("Container %s failed - %v\n", uuid, err)
+			output <- msg
+			close(output)
+
+			fmt.Fprintf(os.Stderr, msg)
 		}
 	}
 }
@@ -114,8 +121,6 @@ func pipeStdout(stdout *bufio.Reader, output messages) {
 			if err != io.EOF {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			}
-
-			close(output)
 			break
 		}
 
