@@ -184,15 +184,19 @@ func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
 			OpenStdin:       true,
 			Cmd:             cmd,
 			KernelMemory:    1024 * 1024 * 4,
-			PidsLimit:       50,
+			PidsLimit:       100,
 		},
 	})
 }
 
 func (r *Runner) startContainer(containerID string) error {
 	return DockerClient.StartContainer(containerID, &docker.HostConfig{
-		CPUQuota: 40000,
-		Memory:   50 * 1024 * 1024, // so the memory swap will be the same size
+		CPUQuota:   20000,
+		CPUShares:  256,
+		MemorySwap: -1,
+		Privileged: false,
+		CapDrop:    []string{"all"},
+		Memory:     50 * 1024 * 1024, // so the memory swap will be the same size
 	})
 }
 
