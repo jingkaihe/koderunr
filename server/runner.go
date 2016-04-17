@@ -192,7 +192,6 @@ func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
 func (r *Runner) startContainer(containerID string) error {
 	return DockerClient.StartContainer(containerID, &docker.HostConfig{
 		CPUQuota:   20000,
-		CPUShares:  256,
 		MemorySwap: -1,
 		Privileged: false,
 		CapDrop:    []string{"all"},
