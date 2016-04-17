@@ -48,23 +48,25 @@ func (cli *Client) Write(w http.ResponseWriter, isEvtSource bool) {
 
 	for msg := range cli.output {
 		if isEvtSource == true {
-			// To make event source comfort.
-			// From http://www.html5rocks.com/en/tutorials/eventsource/basics/
-			// If your message is longer, you can break it up by using multiple "data:" lines.
-			// Two or more consecutive lines beginning with "data:" will be treated as a single
-			// piece of data, meaning only one message event will be fired. Each line should
-			// end in a single "\n" (except for the last, which should end with two). The result
-			// passed to your message handler is a single string concatenated by newline characters.
-			lines := strings.Split(msg, "\n")
-			for i, line := range lines {
-				lines[i] = "data: " + line
-			}
-			msg = strings.Join(lines, "\n")
-			fmt.Fprintf(w, "%s\n\n", msg)
-		} else {
-			fmt.Fprint(w, msg)
+			msg = cli.sseFormat(msg)
 		}
 
+		fmt.Fprint(w, msg)
 		f.Flush()
 	}
+}
+
+// To make event source comfort.
+// From http://www.html5rocks.com/en/tutorials/eventsource/basics/
+// If your message is longer, you can break it up by using multiple "data:" lines.
+// Two or more consecutive lines beginning with "data:" will be treated as a single
+// piece of data, meaning only one message event will be fired. Each line should
+// end in a single "\n" (except for the last, which should end with two). The result
+// passed to your message handler is a single string concatenated by newline characters.
+func (cli *Client) sseFormat(msg string) string {
+	lines := strings.Split(msg, "\n")
+	for i, line := range lines {
+		lines[i] = "data: " + line
+	}
+	return strings.Join(lines, "\n") + "\n\n"
 }
