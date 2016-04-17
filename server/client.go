@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"strings"
@@ -65,8 +66,12 @@ func (cli *Client) Write(w http.ResponseWriter, isEvtSource bool) {
 // passed to your message handler is a single string concatenated by newline characters.
 func (cli *Client) sseFormat(msg string) string {
 	lines := strings.Split(msg, "\n")
-	for i, line := range lines {
-		lines[i] = "data: " + line
+	var b bytes.Buffer
+	for _, line := range lines {
+		if line != "" {
+			fmt.Fprintf(&b, "data: %s\n", line)
+		}
 	}
-	return strings.Join(lines, "\n") + "\n\n"
+	b.WriteString("\n")
+	return b.String()
 }
