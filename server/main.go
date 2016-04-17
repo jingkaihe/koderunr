@@ -14,6 +14,12 @@ func init() {
 	flag.BoolVar(&servingStatic, "static", false, "if using Go server hosting static files")
 	flag.IntVar(&runnerThrottleNum, "runner_throttle", 4, "Limit the max throttle for the runners")
 	flag.Parse()
+
+	var err error
+	DockerClient, err = NewDockerClient()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func main() {
