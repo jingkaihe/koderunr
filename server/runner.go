@@ -150,6 +150,12 @@ func (r *Runner) image() string {
 // NewDockerClient creates a new docker client using Unix sock connection
 func NewDockerClient() (*dcli.Client, error) {
 	defaultHeaders := map[string]string{"User-Agent": "engine-api-cli-1.23"}
+
+	if os.Getenv("DOCKER_HOST") != "" {
+		os.Setenv("DOCKER_API_VERSION", "v1.23")
+		return dcli.NewEnvClient()
+	}
+
 	return dcli.NewClient("unix:///var/run/docker.sock", "v1.23", nil, defaultHeaders)
 }
 
