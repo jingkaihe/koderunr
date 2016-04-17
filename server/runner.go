@@ -142,7 +142,7 @@ func pipeStdout(stdout *io.PipeReader, output messages) {
 	}
 }
 
-// New DockerClient create a new docker client
+// NewDockerClient create a new docker client
 func NewDockerClient() (*docker.Client, error) {
 	dockerHost := os.Getenv("DOCKER_HOST")
 
@@ -184,7 +184,7 @@ func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
 			OpenStdin:       true,
 			Cmd:             cmd,
 			KernelMemory:    1024 * 1024 * 4,
-			PidsLimit:       100,
+			PidsLimit:       50,
 		},
 	})
 }
