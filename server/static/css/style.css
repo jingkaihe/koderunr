@@ -6,6 +6,7 @@ body {
 button {
   color: black;
 }
+
 .terminal div{
   margin-bottom: 10px;
 }
@@ -20,7 +21,7 @@ button {
 
 #editor {
   position: fixed;
-  width: 66%;
+  width: 50%;
   height: 92%;
   z-index: 2;
 }
