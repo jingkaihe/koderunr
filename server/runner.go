@@ -195,7 +195,7 @@ func (r *Runner) startContainer(containerID string) error {
 		MemorySwap: -1,
 		Privileged: false,
 		CapDrop:    []string{"all"},
-		Memory:     50 * 1024 * 1024, // so the memory swap will be the same size
+		Memory:     80 * 1024 * 1024, // so the memory swap will be the same size
 	})
 }
 
