@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/garyburd/redigo/redis"
 )
@@ -23,19 +26,34 @@ type Runner struct {
 	Version       string `json:"version"`
 	Timeout       int    `json:"timeout"` // How long is the code going to run
 	closeNotifier <-chan bool
+	logger        *logrus.Logger
+	containerID   string
 }
 
 // Runnerthrottle Limit the max throttle for runner
 var Runnerthrottle chan struct{}
+
+// FetchCode get the code from Redis Server according to the UUID
+func FetchCode(uuid string, redisConn redis.Conn) (r *Runner, err error) {
+	value, err := redis.Bytes(redisConn.Do("GET", uuid+"#run"))
+
+	if err != nil {
+		return
+	}
+
+	r = &Runner{}
+	err = json.Unmarshal(value, r)
+	return
+}
 
 // Run the code in the container
 func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	Runnerthrottle <- struct{}{}
 	defer func() { <-Runnerthrottle }()
 
-	container, err := r.createContainer(uuid)
+	err := r.createContainer(uuid)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: Container %s cannot be created - %v\n", uuid, err)
+		r.logger.Errorf("Container %s cannot be created - %v", uuid, err)
 		return
 	}
 
@@ -43,59 +61,51 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	stdinReader, stdinWriter := io.Pipe()
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v", err)
+		r.logger.Error(err)
 	}
 
 	defer stdinWriter.Close()
 	defer stdoutWriter.Close()
 
-	go pipeStdin(conn, uuid, stdinWriter)
-	go pipeStdout(stdoutReader, output)
+	go pipeStdin(conn, uuid, stdinWriter, r.logger)
+	go pipeStdout(stdoutReader, output, r.logger)
 
 	// Start running the container
-	err = r.startContainer(container.ID)
+	err = r.startContainer()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: Container %s cannot be started - %v\n", uuid, err)
+		r.logger.Errorf("Container %s cannot be started - %v", uuid, err)
 		return
 	}
-	defer DockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID, Force: true})
+	defer DockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: r.containerID, Force: true})
 
 	successChan := make(chan struct{})
 	errorChan := make(chan error)
 
-	go func() {
-		_, err := DockerClient.WaitContainer(container.ID)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			errorChan <- err
-			return
-		}
-		successChan <- struct{}{}
-	}()
+	go r.waitContainer(successChan, errorChan)
 
-	go func() {
-		err = r.attachContainer(container.ID, stdoutWriter, stdinReader)
+	go func(r *Runner, uuid string) {
+		err = r.attachContainer(stdoutWriter, stdinReader)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Container %s cannot be attached - %v\n", uuid, err)
+			r.logger.Errorf("Container %s cannot be attached - %v", uuid, err)
 		}
-	}()
+	}(r, uuid)
 
 	select {
 	case <-r.closeNotifier:
-		DockerClient.StopContainer(container.ID, 0)
-		fmt.Fprintf(os.Stdout, "Container %s is stopped since the streamming has been halted\n", uuid)
+		DockerClient.StopContainer(r.containerID, 0)
+		r.logger.Infof("Container %s is stopped since the streamming has been halted", uuid)
 	case <-successChan:
-		fmt.Fprintf(os.Stdout, "Container %s is executed successfully\n", uuid)
+		r.logger.Infof("Container %s is executed successfully", uuid)
 	case err := <-errorChan:
-		fmt.Fprintf(os.Stdout, "Container %s failed caused by - %v\n", uuid, err)
+		r.logger.Errorf("Container %s failed caused by - %v", uuid, err)
 	case <-time.After(time.Duration(r.Timeout) * time.Second):
 		msg := fmt.Sprintf("Container %s is terminated caused by 15 sec timeout\n", uuid)
-		fmt.Fprintf(os.Stderr, msg)
+		r.logger.Error(msg)
 		output <- msg
 	}
 }
 
-func pipeStdin(conn redis.Conn, uuid string, stdin *io.PipeWriter) {
+func pipeStdin(conn redis.Conn, uuid string, stdin *io.PipeWriter, logger *logrus.Logger) {
 	psc := redis.PubSubConn{Conn: conn}
 	psc.Subscribe(uuid + "#stdin")
 
@@ -109,23 +119,24 @@ StdinSubscriptionLoop:
 	for {
 		switch n := psc.Receive().(type) {
 		case redis.Message:
-			fmt.Printf("Message: %s %s\n", n.Channel, n.Data)
+			stdinData := strconv.QuoteToASCII(string(n.Data))
+			logger.Infof("Message: %s %s", n.Channel, stdinData)
 			stdin.Write(n.Data)
 		case error:
 			break StdinSubscriptionLoop
 		}
 	}
-	fmt.Println("Stdin subscription closed")
+	logger.Info("Stdin subscription closed")
 }
 
-func pipeStdout(stdout *io.PipeReader, output messages) {
+func pipeStdout(stdout *io.PipeReader, output messages, logger *logrus.Logger) {
 	buffer := make([]byte, 512)
 	for {
 		n, err := stdout.Read(buffer)
 		if err != nil {
 			if err != io.EOF {
 				stdout.Close()
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				logger.Error(err)
 			}
 
 			close(output)
@@ -170,13 +181,13 @@ func (r *Runner) image() string {
 	return imageMapper[r.Lang]
 }
 
-func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
+func (r *Runner) createContainer(uuid string) error {
 	cmd := []string{r.Source, uuid}
 
 	if r.Version != "" {
 		cmd = append(cmd, r.Version)
 	}
-	return DockerClient.CreateContainer(docker.CreateContainerOptions{
+	container, err := DockerClient.CreateContainer(docker.CreateContainerOptions{
 		Name: uuid,
 		Config: &docker.Config{
 			Image:           r.image(),
@@ -187,10 +198,17 @@ func (r *Runner) createContainer(uuid string) (*docker.Container, error) {
 			PidsLimit:       100,
 		},
 	})
+
+	if err != nil {
+		return err
+	}
+
+	r.containerID = container.ID
+	return nil
 }
 
-func (r *Runner) startContainer(containerID string) error {
-	return DockerClient.StartContainer(containerID, &docker.HostConfig{
+func (r *Runner) startContainer() error {
+	return DockerClient.StartContainer(r.containerID, &docker.HostConfig{
 		CPUQuota:   20000,
 		MemorySwap: -1,
 		Privileged: false,
@@ -199,9 +217,9 @@ func (r *Runner) startContainer(containerID string) error {
 	})
 }
 
-func (r *Runner) attachContainer(containerID string, stdoutWriter *io.PipeWriter, stdinReader *io.PipeReader) error {
+func (r *Runner) attachContainer(stdoutWriter *io.PipeWriter, stdinReader *io.PipeReader) error {
 	return DockerClient.AttachToContainer(docker.AttachToContainerOptions{
-		Container:    containerID,
+		Container:    r.containerID,
 		Stdin:        true,
 		Stdout:       true,
 		Stderr:       true,
@@ -210,4 +228,14 @@ func (r *Runner) attachContainer(containerID string, stdoutWriter *io.PipeWriter
 		ErrorStream:  stdoutWriter,
 		InputStream:  stdinReader,
 	})
+}
+
+func (r *Runner) waitContainer(successChan chan<- struct{}, errorChan chan<- error) {
+	_, err := DockerClient.WaitContainer(r.containerID)
+	if err != nil {
+		r.logger.Error(err)
+		errorChan <- err
+		return
+	}
+	successChan <- struct{}{}
 }

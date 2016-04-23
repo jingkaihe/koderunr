@@ -14,7 +14,7 @@ import (
 // Server is the abstraction of a koderunr web api
 type Server struct {
 	redisPool     *redis.Pool
-	log           *logrus.Logger
+	logger        *logrus.Logger
 	servingStatic bool
 }
 
@@ -30,14 +30,14 @@ func NewServer(maxRedisConn int, servingStatic bool) *Server {
 
 	return &Server{
 		redisPool:     redisPool,
-		log:           logrus.New(),
+		logger:        logrus.New(),
 		servingStatic: servingStatic,
 	}
 }
 
 // Serve start serving http requests
 func (s *Server) Serve(scope string, port int) {
-	s.log.Infof("KodeRunr starting on port: %d", port)
+	s.logger.Infof("KodeRunr starting on port: %d", port)
 
 	if s.servingStatic {
 		http.Handle("/", http.FileServer(http.Dir("static")))
@@ -60,20 +60,18 @@ func (s *Server) HandleRunCode(w http.ResponseWriter, r *http.Request) {
 	conn := s.redisPool.Get()
 	defer conn.Close()
 
-	value, err := redis.Bytes(conn.Do("GET", uuid+"#run"))
+	// Fetch the code into runner from Redis
+	runner, err := FetchCode(uuid, conn)
 	if err != nil {
-		s.log.Errorf("Cannot GET: %v", err)
-		http.Error(w, "The source code doesn't exist", 422)
+		s.logger.Infof("Source code cannot be found in redis - %v", err)
+		http.Error(w, "Cannot find the source code for some reason", 422)
 		return
 	}
-
-	// Started running code
-	runner := &Runner{}
-	json.Unmarshal(value, runner)
 
 	// for close the container right away after the request is halted
 	closeNotifier := w.(http.CloseNotifier).CloseNotify()
 	runner.closeNotifier = closeNotifier
+	runner.logger = s.logger
 
 	isEvtStream := r.FormValue("evt") == "true"
 	client := NewClient(runner, s.redisPool.Get(), uuid)
@@ -84,7 +82,7 @@ func (s *Server) HandleRunCode(w http.ResponseWriter, r *http.Request) {
 	// Purge the source code
 	_, err = conn.Do("DEL", uuid+"#run")
 	if err != nil {
-		s.log.Errorf("Failed to purge the source code for %s - %v", uuid, err)
+		s.logger.Errorf("Failed to purge the source code for %s - %v", uuid, err)
 	}
 }
 
@@ -109,7 +107,7 @@ func (s *Server) HandleSaveCode(w http.ResponseWriter, r *http.Request) {
 
 	_, err := conn.Do("SET", codeID+"#snippet", strj)
 	if err != nil {
-		s.log.Errorf("Failed to store code snippet: %v", err)
+		s.logger.Errorf("Failed to store code snippet: %v", err)
 		http.Error(w, "A serious error has occured.", 500)
 		return
 	}
@@ -127,7 +125,7 @@ func (s *Server) HandleFetchCode(w http.ResponseWriter, r *http.Request) {
 
 	value, err := redis.Bytes(conn.Do("GET", codeID+"#snippet"))
 	if err != nil {
-		s.log.Errorf("Cannot get code snippet: %v", err)
+		s.logger.Errorf("Cannot get code snippet: %v", err)
 		http.Error(w, "The source code doesn't exist", 422)
 		return
 	}
@@ -157,7 +155,7 @@ func (s *Server) HandleReg(w http.ResponseWriter, r *http.Request) {
 
 	_, err := conn.Do("SET", uuid+"#run", strj)
 	if err != nil {
-		s.log.Errorf("Cannot register the code: %v", err)
+		s.logger.Errorf("Cannot register the code: %v", err)
 		http.Error(w, "A serious error has occured.", 500)
 		return
 	}
