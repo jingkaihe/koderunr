@@ -4,16 +4,53 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/garyburd/redigo/redis"
 )
 
 // Server is the abstraction of a koderunr web api
 type Server struct {
-	redisPool *redis.Pool
+	redisPool     *redis.Pool
+	log           *logrus.Logger
+	servingStatic bool
+}
+
+// NewServer create a new Server struct
+func NewServer(maxRedisConn int, servingStatic bool) *Server {
+	redisPool := redis.NewPool(func() (redis.Conn, error) {
+		conn, err := redis.Dial("tcp", ":6379")
+		if err != nil {
+			return nil, err
+		}
+		return conn, err
+	}, maxRedisConn)
+
+	return &Server{
+		redisPool:     redisPool,
+		log:           logrus.New(),
+		servingStatic: servingStatic,
+	}
+}
+
+// Serve start serving http requests
+func (s *Server) Serve(scope string, port int) {
+	s.log.Infof("KodeRunr starting on port: %d", port)
+
+	if s.servingStatic {
+		http.Handle("/", http.FileServer(http.Dir("static")))
+	}
+
+	http.HandleFunc(scope+"langs/", s.HandleLangs)
+	http.HandleFunc(scope+"run/", s.HandleRunCode)
+	http.HandleFunc(scope+"save/", s.HandleSaveCode)
+	http.HandleFunc(scope+"register/", s.HandleReg)
+	http.HandleFunc(scope+"stdin/", s.HandleStdin)
+	http.HandleFunc(scope+"fetch/", s.HandleFetchCode)
+
+	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 // HandleRunCode streams the running program output to the frontend
@@ -25,7 +62,7 @@ func (s *Server) HandleRunCode(w http.ResponseWriter, r *http.Request) {
 
 	value, err := redis.Bytes(conn.Do("GET", uuid+"#run"))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: cannot GET: %v\n", err)
+		s.log.Errorf("Cannot GET: %v", err)
 		http.Error(w, "The source code doesn't exist", 422)
 		return
 	}
@@ -47,7 +84,7 @@ func (s *Server) HandleRunCode(w http.ResponseWriter, r *http.Request) {
 	// Purge the source code
 	_, err = conn.Do("DEL", uuid+"#run")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: Failed to purge the source code for %s - %v\n", uuid, err)
+		s.log.Errorf("Failed to purge the source code for %s - %v", uuid, err)
 	}
 }
 
@@ -72,7 +109,7 @@ func (s *Server) HandleSaveCode(w http.ResponseWriter, r *http.Request) {
 
 	_, err := conn.Do("SET", codeID+"#snippet", strj)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		s.log.Errorf("Failed to store code snippet: %v", err)
 		http.Error(w, "A serious error has occured.", 500)
 		return
 	}
@@ -90,7 +127,7 @@ func (s *Server) HandleFetchCode(w http.ResponseWriter, r *http.Request) {
 
 	value, err := redis.Bytes(conn.Do("GET", codeID+"#snippet"))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: cannot GET: %v\n", err)
+		s.log.Errorf("Cannot get code snippet: %v", err)
 		http.Error(w, "The source code doesn't exist", 422)
 		return
 	}
@@ -120,7 +157,7 @@ func (s *Server) HandleReg(w http.ResponseWriter, r *http.Request) {
 
 	_, err := conn.Do("SET", uuid+"#run", strj)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		s.log.Errorf("Cannot register the code: %v", err)
 		http.Error(w, "A serious error has occured.", 500)
 		return
 	}
