@@ -23,18 +23,15 @@ button {
   position: fixed;
   width: 50%;
   height: 92%;
-  z-index: 2;
+}
+
+#coding {
+  margin-top: 12px;
+  margin-bottom: 15px;
 }
 
 #stdio {
   position: fixed;
   height: 100%;
   width: 100%;
-}
-
-#result {
-  width: 100%;
-  z-index: 2;
-  margin-top: 12px;
-  margin-bottom: 15px;
 }
