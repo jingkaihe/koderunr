@@ -7,7 +7,10 @@ import (
 	"os/exec"
 	"strings"
 
+	"log/syslog"
+
 	"github.com/Sirupsen/logrus"
+	logrus_syslog "github.com/Sirupsen/logrus/hooks/syslog"
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -28,9 +31,17 @@ func NewServer(maxRedisConn int, servingStatic bool) *Server {
 		return conn, err
 	}, maxRedisConn)
 
+	log := logrus.New()
+	hook, err := logrus_syslog.NewSyslogHook("", "", syslog.LOG_INFO, "[KodeRunr Service]")
+
+	if err != nil {
+		panic(err)
+	}
+	log.Hooks.Add(hook)
+
 	return &Server{
 		redisPool:     redisPool,
-		logger:        logrus.New(),
+		logger:        log,
 		servingStatic: servingStatic,
 	}
 }
