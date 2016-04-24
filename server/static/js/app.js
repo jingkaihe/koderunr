@@ -25,6 +25,7 @@ $(function() {
     this.term.focus(false);
     this.editor = ace.edit("editor");
     this.setLang($("#lang").val());
+    this.running = false;
   }
 
   KodeRunr.prototype.setLang = function(lang) {
@@ -47,6 +48,16 @@ $(function() {
   };
 
   KodeRunr.prototype.runCode = function(evt) {
+    // Do not run code when it's in the middle of running,
+    // because it will make the console output messy (and
+    // also confusing)
+    if (this.running) {
+      alert("The code is now running.\n\nYou can either refresh the page or wait for the finishing.")
+      return
+    }
+
+    // Mark the runner as running.
+    this.running = true;
     var sourceCode = this.editor.getValue();
     var runnable = { lang: this.lang, source: sourceCode };
 
@@ -70,6 +81,7 @@ $(function() {
           uuid = undefined;
           runner.term.echo("[[;green;]Completed!]");
           runner.term.focus(false);
+          runner.running = false;
         }
       }
       // Get the command and send to stdin.
