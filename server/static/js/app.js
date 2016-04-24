@@ -107,10 +107,6 @@ $(function() {
       runnable.version = this.version
     }
 
-    if (this.codeID) {
-      runnable.codeID = this.codeID;
-    }
-
     $.post(ROUTERS.SAVE, runnable, function(codeID) {
       window.history.pushState(codeID, "KodeRunr#" + codeID, "/#" + codeID);
     });
@@ -137,6 +133,7 @@ $(function() {
 
       $("#lang").val(lang);
       runner.setLang(lang);
+      $("#lang").replaceWith("<span id='lang' class='lead'>" + lang + "</span>");
       runner.editor.setValue(data.source, 1);
       runner.codeID = codeID;
     });
