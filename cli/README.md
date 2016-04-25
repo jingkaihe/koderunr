@@ -11,8 +11,10 @@ Make sure that you have go and ruby installed. Install koderunr into your `GOPAT
 Kode command line tool uses `rake` to cross compile the source code (so far didn't find a better way doing it). To do it, run
 
 ```
-rake build
+rake cross_compile
 ```
+
+See `rake -T` For more flexibility.
 
 Then you can get the `kode`'s binary in build folder according to the OS and architecture of your computer.
 
