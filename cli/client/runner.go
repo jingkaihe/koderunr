@@ -11,12 +11,6 @@ import (
 	"path"
 )
 
-// TestEndPoint is the endpoint for testing
-const TestEndPoint = "http://127.0.0.1:8080/api"
-
-// Endpoint is the endpoint use in production
-const Endpoint = "http://koderunr.tech/api"
-
 // Runner contains the code to be run
 type Runner struct {
 	lang       string

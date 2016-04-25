@@ -2,6 +2,9 @@ package commands
 
 import "fmt"
 
+// Endpoint that talks to the API
+var Endpoint string
+
 // Command is the interface for a single command
 type Command interface {
 	Help() string
