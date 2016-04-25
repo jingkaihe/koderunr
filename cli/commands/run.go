@@ -49,7 +49,7 @@ func createRunnerFromArgs(args []string) (*client.Runner, error) {
 	flagargs := args[1:]
 
 	runFlagSet := flag.NewFlagSet("run", flag.ExitOnError)
-	endpointFlag := runFlagSet.String("endpoint", "http://koderunr.tech/", "Endpoint of the API")
+	endpointFlag := runFlagSet.String("endpoint", client.Endpoint, "Endpoint of the API")
 	langVersionFlag := runFlagSet.String("version", "", "Version of the language")
 	debugFlag := runFlagSet.Bool("debug", false, "Debug mode use local endpoint")
 

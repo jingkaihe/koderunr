@@ -46,7 +46,7 @@ func (l Langs) Exec(args []string) int {
 	flagargs := args
 
 	langsFlagSet := flag.NewFlagSet("langs", flag.ExitOnError)
-	endpointFlag := langsFlagSet.String("endpoint", "http://koderunr.tech/api/", "Endpoint of the API")
+	endpointFlag := langsFlagSet.String("endpoint", client.Endpoint, "Endpoint of the API")
 	debugFlag := langsFlagSet.Bool("debug", false, "Debug mode use local endpoint")
 
 	langsFlagSet.Parse(flagargs)
@@ -61,7 +61,7 @@ func (l Langs) Exec(args []string) int {
 
 	// TODO: Build the URI in a classy way
 	httpClient := client.NewHTTPClient(60, 60)
-	resp, err := httpClient.Get(endpoint + "langs/")
+	resp, err := httpClient.Get(endpoint + "/langs/")
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
