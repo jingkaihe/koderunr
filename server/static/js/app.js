@@ -72,7 +72,7 @@ $(function() {
       runner.term.focus();
       var evtSource = new EventSource(ROUTERS.RUN + "?evt=true&uuid=" + uuid);
       evtSource.onmessage = function(e) {
-        var str = e.data;
+        var str = e.data.split("\n").join("");
         runner.term.echo(str);
       }
 

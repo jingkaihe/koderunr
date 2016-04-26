@@ -65,13 +65,19 @@ func (cli *Client) Write(w http.ResponseWriter, isEvtSource bool) {
 // end in a single "\n" (except for the last, which should end with two). The result
 // passed to your message handler is a single string concatenated by newline characters.
 func (cli *Client) sseFormat(msg string) string {
+	// if msg does not contain linebreak, we simply wrote that out
+	if !strings.Contains(msg, "\n") {
+		return fmt.Sprintf("data: %s\n", msg)
+	}
+
 	lines := strings.Split(msg, "\n")
 	var b bytes.Buffer
+
 	for _, line := range lines {
 		if line != "" {
-			fmt.Fprintf(&b, "data: %s\n", line)
+			fmt.Fprintf(&b, "data: %s\n\n", line)
 		}
 	}
-	b.WriteString("\n")
+
 	return b.String()
 }
