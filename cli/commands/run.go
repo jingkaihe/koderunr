@@ -13,7 +13,7 @@ import (
 type Run struct {
 }
 
-// Help command of the run
+// Help shows how to use a certain commnad
 func (r Run) Help() string {
 	helpText := `
 Usage: kode run [filename] [options]

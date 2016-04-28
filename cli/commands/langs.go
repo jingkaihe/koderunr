@@ -19,7 +19,7 @@ func (l Langs) Help() string {
 	helpText := `
 Usage: kode languages
 
-  Shows the languages that is supported
+  Shows the languages that are supported
 
 Examples:
 
