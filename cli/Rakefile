@@ -81,5 +81,5 @@ def build(target)
   vars << "GO386=#{target[:go386]}" if target[:go386]
   vars << "GOARM=#{target[:goarm]}" if target[:goarm]
 
-  return system("#{vars.join(' ')} go build #{args.join(' ')}")
+  system("#{vars.join(' ')} go build #{args.join(' ')}")
 end
