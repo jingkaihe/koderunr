@@ -193,6 +193,7 @@ func (s *Server) HandleLangs(w http.ResponseWriter, r *http.Request) {
 Supported Languages:
   Ruby - 2.3.0
   Ruby - 1.9.3-p550
+  JRuby - 1.7.9
   Python - 2.7.6
   Python - 3.5.0
   Swift - 2.2

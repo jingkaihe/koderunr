@@ -19,6 +19,8 @@ RUN echo 'eval "$(rbenv init -)"' >> /etc/profile.d/rbenv.sh
 ENV CONFIGURE_OPTS --disable-install-doc
 RUN echo 'gem: --no-rdoc --no-ri' >> /.gemrc
 
+RUN apt-get install -y --no-install-recommends openjdk-7-jre-headless
+
 # Install MRIs
 ADD ./versions.txt /root/versions.txt
 RUN xargs -L 1 rbenv install < /root/versions.txt

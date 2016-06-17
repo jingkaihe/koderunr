@@ -41,6 +41,9 @@ $(function() {
       case "c":
         mode = "c_cpp";
         break;
+      case "JRuby":
+        mode = "ruby";
+        break;
       default:
         mode = this.lang;
     }
@@ -59,10 +62,16 @@ $(function() {
     // Mark the runner as running.
     this.running = true;
     var sourceCode = this.editor.getValue();
+
     var runnable = { lang: this.lang, source: sourceCode };
 
     if (this.version) {
       runnable.version = this.version;
+    }
+
+    if (this.lang === "JRuby") {
+      runnable.lang = "ruby";
+      runnable.version = "jruby-" + this.version;
     }
 
     var runner = this;
