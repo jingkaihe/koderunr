@@ -195,7 +195,6 @@ func (r *Runner) createContainer(uuid string) error {
 			OpenStdin:       true,
 			Cmd:             cmd,
 			KernelMemory:    1024 * 1024 * 4,
-			PidsLimit:       100,
 		},
 	})
 
@@ -214,6 +213,7 @@ func (r *Runner) startContainer() error {
 		Privileged: false,
 		CapDrop:    []string{"all"},
 		Memory:     80 * 1024 * 1024, // so the memory swap will be the same size
+		PidsLimit:  100,
 	})
 }
 
