@@ -19,7 +19,7 @@ func (l Langs) Help() string {
 	helpText := `
 Usage: kode languages
 
-  Shows the languages that is supported
+  Shows the languages that are supported
 
 Examples:
 
@@ -46,22 +46,13 @@ func (l Langs) Exec(args []string) int {
 	flagargs := args
 
 	langsFlagSet := flag.NewFlagSet("langs", flag.ExitOnError)
-	endpointFlag := langsFlagSet.String("endpoint", "http://koderunr.tech/api/", "Endpoint of the API")
-	debugFlag := langsFlagSet.Bool("debug", false, "Debug mode use local endpoint")
+	endpointFlag := langsFlagSet.String("endpoint", Endpoint, "Endpoint of the API")
 
 	langsFlagSet.Parse(flagargs)
 
-	var endpoint string
-
-	if *debugFlag == true {
-		endpoint = client.TestEndPoint
-	} else {
-		endpoint = *endpointFlag
-	}
-
 	// TODO: Build the URI in a classy way
 	httpClient := client.NewHTTPClient(60, 60)
-	resp, err := httpClient.Get(endpoint + "langs/")
+	resp, err := httpClient.Get(*endpointFlag + "/langs/")
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

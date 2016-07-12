@@ -13,7 +13,7 @@ import (
 type Run struct {
 }
 
-// Help command of the run
+// Help shows how to use a certain commnad
 func (r Run) Help() string {
 	helpText := `
 Usage: kode run [filename] [options]
@@ -49,21 +49,12 @@ func createRunnerFromArgs(args []string) (*client.Runner, error) {
 	flagargs := args[1:]
 
 	runFlagSet := flag.NewFlagSet("run", flag.ExitOnError)
-	endpointFlag := runFlagSet.String("endpoint", "http://koderunr.tech/", "Endpoint of the API")
+	endpointFlag := runFlagSet.String("endpoint", Endpoint, "Endpoint of the API")
 	langVersionFlag := runFlagSet.String("version", "", "Version of the language")
-	debugFlag := runFlagSet.Bool("debug", false, "Debug mode use local endpoint")
 
 	runFlagSet.Parse(flagargs)
 
-	var endpoint string
-
-	if *debugFlag == true {
-		endpoint = client.TestEndPoint
-	} else {
-		endpoint = *endpointFlag
-	}
-
-	return client.NewRunner(*langVersionFlag, args[0], endpoint)
+	return client.NewRunner(*langVersionFlag, args[0], *endpointFlag)
 }
 
 // Exec is the command that will execute the Run command

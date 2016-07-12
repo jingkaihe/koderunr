@@ -1,0 +1,68 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+  config.vm.box = "ubuntu/trusty64"
+
+  # Create a forwarded port mapping which allows access to a specific port
+  # within the machine from a port on the host machine. In the example below,
+  # accessing "localhost:8080" will access port 80 on the guest machine.
+  config.vm.network "forwarded_port", guest: 8080, host: 8080
+
+
+  # Share an additional folder to the guest VM. The first argument is
+  # the path on the host to the actual folder. The second argument is
+  # the path on the guest to mount the folder. And the optional third
+  # argument is a set of non-required options.
+  config.vm.synced_folder ".", "/home/vagrant/go/src/server"
+
+  config.vm.provider "virtualbox" do |vb|
+    # Customize the amount of memory on the VM:
+    vb.memory = "4096"
+  end
+
+  config.vm.provision "shell", inline: <<-SHELL
+    # Install Golang
+    sudo apt-get update -y
+    sudo add-apt-repository ppa:ubuntu-lxc/lxd-stable -y
+    sudo apt-get update -y
+    sudo apt-get upgrade
+    sudo apt-get install golang -y
+
+    # encoding
+    sudo locale-gen en_GB.UTF-8 -y
+
+    # Upgrade the kernel to 4.3
+    cd /tmp
+    wget http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.3-wily/linux-headers-4.3.0-040300-generic_4.3.0-040300.201511020949_amd64.deb
+    wget http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.3-wily/linux-headers-4.3.0-040300_4.3.0-040300.201511020949_all.deb
+    wget http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.3-wily/linux-image-4.3.0-040300-generic_4.3.0-040300.201511020949_amd64.deb
+    sudo dpkg -i *.deb
+
+    # Install docker
+    sudo apt-get update
+    sudo apt-get install apt-transport-https ca-certificates -y
+    sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+    sudo echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" >> /etc/apt/sources.list.d/docker.list
+    sudo apt-get update
+    sudo apt-get purge lxc-docker -y
+    sudo apt-cache policy docker-engine -y
+    sudo apt-get upgrade -y
+    sudo apt-get install docker-engine -y
+    sudo service docker start
+
+    # Install Redis
+    sudo apt-get install redis-server -y
+
+    # Install htop for monitoring
+    sudo apt-get install htop
+
+    sudo apt-get autoremove -y
+
+    mkdir -p /home/vagrant/go/src/server
+    echo "export GOPATH=/home/vagrant/go" >> /home/vagrant/.bashrc
+
+    GOPATH=/home/vagrant/go
+    mkdir -p "$GOPATH/src" "$GOPATH/bin"
+  SHELL
+end

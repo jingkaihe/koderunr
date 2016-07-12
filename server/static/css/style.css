@@ -6,6 +6,7 @@ body {
 button {
   color: black;
 }
+
 .terminal div{
   margin-bottom: 10px;
 }
@@ -20,20 +21,17 @@ button {
 
 #editor {
   position: fixed;
-  width: 66%;
+  width: 50%;
   height: 92%;
-  z-index: 2;
+}
+
+#navbar {
+  margin-top: 12px;
+  margin-bottom: 15px;
 }
 
 #stdio {
   position: fixed;
   height: 100%;
   width: 100%;
-}
-
-#result {
-  width: 100%;
-  z-index: 2;
-  margin-top: 12px;
-  margin-bottom: 15px;
 }

@@ -11,9 +11,6 @@ import (
 	"path"
 )
 
-// TestEndPoint is the endpoint for testing
-const TestEndPoint = "http://127.0.0.1:8080/"
-
 // Runner contains the code to be run
 type Runner struct {
 	lang       string
@@ -70,7 +67,7 @@ func (r *Runner) FetchUUID() error {
 		params["version"] = []string{r.version}
 	}
 
-	resp, err := r.httpClient.PostForm(r.endpoint+"api/register/", params)
+	resp, err := r.httpClient.PostForm(r.endpoint+"/register/", params)
 	if err != nil {
 		return err
 	}
@@ -93,7 +90,7 @@ func (r *Runner) Share() (string, error) {
 		params["version"] = []string{r.version}
 	}
 
-	resp, err := r.httpClient.PostForm(r.endpoint+"api/save/", params)
+	resp, err := r.httpClient.PostForm(r.endpoint+"/save/", params)
 	if err != nil {
 		return "", err
 	}
@@ -114,7 +111,7 @@ func (r *Runner) Run() error {
 	go r.fetchStdin()
 
 	// TODO: Build the URI in a classy way
-	resp, err := r.httpClient.Get(r.endpoint + "api/run/?uuid=" + r.uuid)
+	resp, err := r.httpClient.Get(r.endpoint + "/run/?uuid=" + r.uuid)
 	if err != nil {
 		return err
 	}
@@ -143,7 +140,7 @@ func (r *Runner) fetchStdin() error {
 
 		params := url.Values{"uuid": {r.uuid}, "input": {text}}
 
-		resp, err := r.httpClient.PostForm(r.endpoint+"api/stdin/", params)
+		resp, err := r.httpClient.PostForm(r.endpoint+"/stdin/", params)
 		if err != nil {
 			return err
 		}

@@ -64,12 +64,22 @@ def build(target)
   puts " *** #{target[:os]} - #{target[:arch]} ***"
 
   path = "./build/#{target[:os]}/#{target[:arch]}/kode"
-  ldflags = "-X=main.Version=#{VERSION}"
+
+  endpoint = if ENV["DEBUG"]
+    "http://127.0.0.1:8080/api"
+  else
+    "http://koderunr.tech/api"
+  end
+
+  ldflags = [
+    "-X main.Version=#{VERSION}",
+    "-X github.com/jaxi/koderunr/cli/commands.Endpoint=#{endpoint}",
+  ].join(" ")
   args = ["-o", "#{path}", "-ldflags", "\"#{ldflags}\""]
 
   vars = ["GOOS=#{target[:os]}", "GOARCH=#{target[:arch]}"]
   vars << "GO386=#{target[:go386]}" if target[:go386]
   vars << "GOARM=#{target[:goarm]}" if target[:goarm]
 
-  return system("#{vars.join(' ')} go build #{args.join(' ')}")
+  system("#{vars.join(' ')} go build #{args.join(' ')}")
 end
