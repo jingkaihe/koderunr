@@ -52,8 +52,8 @@ $(function() {
     // because it will make the console output messy (and
     // also confusing)
     if (this.running) {
-      alert("The code is now running.\n\nYou can either refresh the page or wait for the finishing.")
-      return
+      alert("The code is now running.\n\nYou can either refresh the page or wait for the finishing.");
+      return;
     }
 
     // Mark the runner as running.
@@ -73,7 +73,12 @@ $(function() {
       var evtSource = new EventSource(ROUTERS.RUN + "?evt=true&uuid=" + uuid);
       evtSource.onmessage = function(e) {
         var str = e.data.split("\n").join("");
-        runner.term.echo(str);
+
+        if (str === "") {
+          runner.term.echo("\r");
+        } else {
+          runner.term.echo(str);
+        }
       }
 
       evtSource.onerror = function(e) {

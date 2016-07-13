@@ -55,6 +55,11 @@ func (cli *Client) Write(w http.ResponseWriter, isEvtSource bool) {
 		fmt.Fprint(w, msg)
 		f.Flush()
 	}
+
+	if isEvtSource == true {
+		fmt.Fprint(w, cli.sseFormat("\n"))
+		f.Flush()
+	}
 }
 
 // To make event source comfort.
@@ -73,10 +78,11 @@ func (cli *Client) sseFormat(msg string) string {
 	lines := strings.Split(msg, "\n")
 	var b bytes.Buffer
 
-	for _, line := range lines {
-		if line != "" {
-			fmt.Fprintf(&b, "data: %s\n\n", line)
+	for i, line := range lines {
+		if i == len(lines)-1 && line == "" {
+			continue
 		}
+		fmt.Fprintf(&b, "data: %s\n\n", line)
 	}
 
 	return b.String()
