@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -52,12 +53,19 @@ func (cli *Client) Write(w http.ResponseWriter, isEvtSource bool) {
 			msg = cli.sseFormat(msg)
 		}
 
-		fmt.Fprint(w, msg)
+		if _, err := fmt.Fprint(w, msg); err != nil {
+			cli.logger().Errorf("Response is not writable for %s\n", msg)
+			return
+		}
 		f.Flush()
 	}
 
 	if isEvtSource == true {
-		fmt.Fprint(w, cli.sseFormat("\n"))
+		msg := cli.sseFormat("\n")
+		if _, err := fmt.Fprint(w, msg); err != nil {
+			cli.logger().Errorf("Response is not writable for %s\n", msg)
+			return
+		}
 		f.Flush()
 	}
 }
@@ -86,4 +94,8 @@ func (cli *Client) sseFormat(msg string) string {
 	}
 
 	return b.String()
+}
+
+func (cli *Client) logger() *logrus.Logger {
+	return cli.runner.logger
 }
