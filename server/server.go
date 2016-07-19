@@ -54,14 +54,22 @@ func (s *Server) Serve(scope string, port int) {
 		http.Handle("/", http.FileServer(http.Dir("static")))
 	}
 
-	http.HandleFunc(scope+"langs/", s.HandleLangs)
-	http.HandleFunc(scope+"run/", s.HandleRunCode)
-	http.HandleFunc(scope+"save/", s.HandleSaveCode)
-	http.HandleFunc(scope+"register/", s.HandleReg)
-	http.HandleFunc(scope+"stdin/", s.HandleStdin)
-	http.HandleFunc(scope+"fetch/", s.HandleFetchCode)
+	for url, handleFn := range s.routeMap() {
+		http.Handle(scope+url, s.recoverMiddleWare(http.HandlerFunc(handleFn)))
+	}
 
 	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+}
+
+func (s *Server) routeMap() map[string]func(w http.ResponseWriter, r *http.Request) {
+	return map[string]func(w http.ResponseWriter, r *http.Request){
+		"langs/":    s.HandleLangs,
+		"run/":      s.HandleRunCode,
+		"save/":     s.HandleSaveCode,
+		"register/": s.HandleReg,
+		"stdin/":    s.HandleStdin,
+		"fetch/":    s.HandleFetchCode,
+	}
 }
 
 // HandleRunCode streams the running program output to the frontend
@@ -203,4 +211,15 @@ Supported Languages:
 	text = strings.TrimSpace(text)
 
 	fmt.Fprintf(w, "%s\n", text)
+}
+
+func (s *Server) recoverMiddleWare(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if r := recover(); r != nil {
+				s.logger.Errorf("Request crashed caused by %v\n", r)
+			}
+		}()
+		h.ServeHTTP(w, r)
+	})
 }
