@@ -178,10 +178,18 @@ var imageMapper = map[string]string{
 }
 
 func (r *Runner) image() string {
-	if r.Version != "" {
-		return fmt.Sprintf("%s:%s", imageMapper[r.Lang], r.Version)
+	selectedVersion := r.Version
+	availableVersions := (*appConfig.Languages)[r.Lang]
+	fmt.Println(availableVersions)
+
+	if selectedVersion == "" {
+		if len(availableVersions) > 0 {
+			selectedVersion = availableVersions[0]
+		} else {
+			selectedVersion = "latest"
+		}
 	}
-	return imageMapper[r.Lang]
+	return fmt.Sprintf("%s:%s", imageMapper[r.Lang], selectedVersion)
 }
 
 func (r *Runner) createContainer(uuid string) error {

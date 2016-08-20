@@ -2,15 +2,15 @@ package main
 
 import "flag"
 
-var servingStatic bool
-var runnerThrottleNum int
+var appConfig *Config
 
 func init() {
-	flag.BoolVar(&servingStatic, "static", false, "if using Go server hosting static files")
-	flag.IntVar(&runnerThrottleNum, "runner_throttle", 4, "Limit the max throttle for the runners")
+	var configPath string
+	flag.StringVar(&configPath, "config", "config.json", "Configuration for the Koderunr")
 	flag.Parse()
 
 	var err error
+	appConfig, err = ReadConfigFile(configPath)
 	DockerClient, err = NewDockerClient()
 	if err != nil {
 		panic(err)
@@ -18,8 +18,8 @@ func init() {
 }
 
 func main() {
-	Runnerthrottle = make(chan struct{}, runnerThrottleNum)
+	Runnerthrottle = make(chan struct{}, appConfig.RunnerThrottleNum)
 
-	s := NewServer(16, servingStatic)
+	s := NewServer(16, appConfig.Static)
 	s.Serve("/api/", 8080)
 }
