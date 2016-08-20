@@ -199,14 +199,15 @@ func (s *Server) HandleStdin(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleLangs(w http.ResponseWriter, r *http.Request) {
 	text := `
 Supported Languages:
-  Ruby - 2.3.0
-  Ruby - 1.9.3-p550
-  Python - 2.7.6
-  Python - 3.5.0
-  Swift - 2.2
-  C - GCC 4.9
-  Go - 1.6
-  Elixir - 1.2.3
+	Ruby - 2.3.1
+	Ruby - 2.2.5
+	Ruby - 2.1.10
+	Python - 2.7.12
+	Python - 3.3.6
+	Python - 3.4.5
+	Go - 1.7.0
+	Swift
+	C
 `
 	text = strings.TrimSpace(text)
 

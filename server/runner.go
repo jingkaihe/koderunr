@@ -178,15 +178,15 @@ var imageMapper = map[string]string{
 }
 
 func (r *Runner) image() string {
+	if r.Version != "" {
+		return fmt.Sprintf("%s:%s", imageMapper[r.Lang], r.Version)
+	}
 	return imageMapper[r.Lang]
 }
 
 func (r *Runner) createContainer(uuid string) error {
 	cmd := []string{r.Source, uuid}
 
-	if r.Version != "" {
-		cmd = append(cmd, r.Version)
-	}
 	container, err := DockerClient.CreateContainer(docker.CreateContainerOptions{
 		Name: uuid,
 		Config: &docker.Config{
