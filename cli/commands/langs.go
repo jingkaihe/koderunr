@@ -46,7 +46,7 @@ func (l Langs) Exec(args []string) int {
 	flagargs := args
 
 	langsFlagSet := flag.NewFlagSet("langs", flag.ExitOnError)
-	endpointFlag := langsFlagSet.String("endpoint", Endpoint, "Endpoint of the API")
+	endpointFlag := langsFlagSet.String("endpoint", Endpoint+"/api", "Endpoint of the API")
 
 	langsFlagSet.Parse(flagargs)
 

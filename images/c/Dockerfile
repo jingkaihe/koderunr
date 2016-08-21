@@ -1,12 +1,12 @@
-FROM buildpack-deps:jessie-scm
+FROM alpine:3.4
+
 MAINTAINER Jingkai He
 
-# Install Golang
-RUN apt-get update -y
-RUN apt-get install gcc -y
+RUN apk add --no-cache g++
 
-# Tidy up
-RUN apt-get clean
+ENV C_PATH /c
+RUN mkdir -p $C_PATH
+WORKDIR $C_PATH
 
 COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh

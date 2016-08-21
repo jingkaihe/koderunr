@@ -1,23 +1,11 @@
-FROM ubuntu
+FROM golang:1.7.0-alpine
 MAINTAINER Jingkai He
-
-# Install Golang
-RUN apt-get update -y
-RUN apt-get install software-properties-common -y
-
-RUN add-apt-repository ppa:ubuntu-lxc/lxd-stable -y
-RUN apt-get update -y
-RUN apt-get install golang -y
 
 
 ENV GOPATH /go
+RUN mkdir -p "$GOPATH/src" "$GOPATH/bin"
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
-
-RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
-WORKDIR $GOPATH/src
-
-# Tidy up
-RUN apt-get clean
+WORKDIR "$GOPATH/src"
 
 COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh

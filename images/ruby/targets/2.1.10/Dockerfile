@@ -1,11 +1,12 @@
-FROM swiftdocker/swift
+FROM ruby:2.1.10-alpine
 MAINTAINER Jingkai He
 
-ENV SWIFT_PATH /swift
-RUN mkdir -p $SWIFT_PATH
-WORKDIR $SWIFT_PATH
+ENV RUBY_PATH /ruby
+RUN mkdir -p $RUBY_PATH
+WORKDIR $RUBY_PATH
 
 COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
+

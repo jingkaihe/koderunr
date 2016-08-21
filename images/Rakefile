@@ -1,0 +1,45 @@
+desc "build everything..."
+task :build do
+  build_swift
+  build_go
+  build_c
+  build("ruby")
+  build("python")
+end
+
+def build_swift
+  system "docker build --tag koderunr-swift swift/"
+end
+
+def build_c
+  system "docker build --tag koderunr-c c/"
+end
+
+def build_go
+  system "docker build --tag koderunr-go go/"
+end
+
+def build(lang)
+  versions = File.read("#{lang}/versions.txt").split("\n")
+
+  versions.each do |v|
+    build_dir = "#{lang}/targets/#{v}"
+    system "mkdir", "-p", build_dir
+    system "cp", "#{lang}/entrypoint.sh", build_dir
+    system "echo '#{DockerfileTemplate.new(lang, v).render}' > #{build_dir}/Dockerfile"
+    system "docker build --tag koderunr-#{lang}:#{v} #{build_dir}"
+  end
+end
+
+require "erb"
+class DockerfileTemplate
+  def initialize(lang, version)
+    @lang = lang
+    @version = version
+  end
+
+  def render
+    template = File.read("#{@lang}/Dockerfile.erb")
+    ERB.new(template).result(binding)
+  end
+end

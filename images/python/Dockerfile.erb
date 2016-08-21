@@ -1,0 +1,11 @@
+FROM python:<%= @version %>-alpine
+MAINTAINER Jingkai He
+
+ENV PYTHON_PATH /python
+RUN mkdir -p $PYTHON_PATH
+WORKDIR $PYTHON_PATH
+
+COPY entrypoint.sh /
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

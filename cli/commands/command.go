@@ -2,7 +2,7 @@ package commands
 
 import "fmt"
 
-// Endpoint that talks to the API
+// Endpoint is the URL of the service
 var Endpoint string
 
 // Command is the interface for a single command

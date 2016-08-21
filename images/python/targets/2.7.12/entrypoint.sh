@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 source_code=$1
-fname=$2.ex
+fname=$2.py
 
 touch $fname
 echo "$source_code" > $fname
-elixir $fname
+python $fname

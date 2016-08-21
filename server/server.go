@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -197,20 +198,16 @@ func (s *Server) HandleStdin(w http.ResponseWriter, r *http.Request) {
 
 //HandleLangs deals with the request for show available programming languages
 func (s *Server) HandleLangs(w http.ResponseWriter, r *http.Request) {
-	text := `
-Supported Languages:
-  Ruby - 2.3.0
-  Ruby - 1.9.3-p550
-  Python - 2.7.6
-  Python - 3.5.0
-  Swift - 2.2
-  C - GCC 4.9
-  Go - 1.6
-  Elixir - 1.2.3
-`
-	text = strings.TrimSpace(text)
+	var b bytes.Buffer
+	b.WriteString("Supported Languages\n")
 
-	fmt.Fprintf(w, "%s\n", text)
+	for lang, versions := range *appConfig.Languages {
+		for _, version := range versions {
+			b.WriteString(fmt.Sprintf("  %-9s - %s\n", lang, version))
+		}
+	}
+
+	b.WriteTo(w)
 }
 
 func (s *Server) recoverMiddleWare(h http.Handler) http.Handler {

@@ -1,0 +1,5 @@
+{
+  "languages_file": "./languages.default.json",
+  "static": true,
+  "runner_throttle_num": 4
+}
