@@ -4,4 +4,4 @@
 
 Then you can `./server` to start the server without the assets and html loaded (you probably need to do this in production).
 
-Or `./server -static=true`to start the server with assets loaded (ideally in development environment).
+Or `./server -config=/PATH/TO/CONFIGURATION`to start the server with assets loaded (ideally in development environment).

@@ -51,7 +51,6 @@ func (s Share) Exec(args []string) int {
 
 	if isOSDarwin() {
 		exec.Command("open", url).Run()
-
 	} else {
 		fmt.Println(url)
 	}

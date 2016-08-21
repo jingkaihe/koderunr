@@ -66,9 +66,9 @@ def build(target)
   path = "./build/#{target[:os]}/#{target[:arch]}/kode"
 
   endpoint = if ENV["DEBUG"]
-    "http://127.0.0.1:8080/api"
+    "http://127.0.0.1:8080"
   else
-    "http://koderunr.tech/api"
+    "http://koderunr.tech"
   end
 
   ldflags = [
