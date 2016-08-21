@@ -180,7 +180,6 @@ var imageMapper = map[string]string{
 func (r *Runner) image() string {
 	selectedVersion := r.Version
 	availableVersions := (*appConfig.Languages)[r.Lang]
-	fmt.Println(availableVersions)
 
 	if selectedVersion == "" {
 		if len(availableVersions) > 0 {

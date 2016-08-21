@@ -16,7 +16,7 @@ def build_c
 end
 
 def build_go
-  system "docker build --tag koderunr-go go/"
+  system "docker build --tag koderunr-go:1.7.0 go/"
 end
 
 def build(lang)
