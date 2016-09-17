@@ -201,8 +201,8 @@ func (s *Server) HandleLangs(w http.ResponseWriter, r *http.Request) {
 	var b bytes.Buffer
 	b.WriteString("Supported Languages\n")
 
-	for lang, versions := range *appConfig.Languages {
-		for _, version := range versions {
+	for lang, spec := range *appConfig.Languages {
+		for _, version := range spec.Versions {
 			b.WriteString(fmt.Sprintf("  %-9s - %s\n", lang, version))
 		}
 	}

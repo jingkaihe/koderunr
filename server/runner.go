@@ -179,7 +179,7 @@ var imageMapper = map[string]string{
 
 func (r *Runner) image() string {
 	selectedVersion := r.Version
-	availableVersions := (*appConfig.Languages)[r.Lang]
+	availableVersions := (*appConfig.Languages)[r.Lang].Versions
 
 	if selectedVersion == "" {
 		if len(availableVersions) > 0 {
@@ -214,13 +214,14 @@ func (r *Runner) createContainer(uuid string) error {
 }
 
 func (r *Runner) startContainer() error {
+	lang := (*appConfig.Languages)[r.Lang]
 	return DockerClient.StartContainer(r.containerID, &docker.HostConfig{
-		CPUQuota:   20000,
+		CPUQuota:   lang.GetCPUQuota(),
 		MemorySwap: -1,
 		Privileged: false,
 		CapDrop:    []string{"all"},
-		Memory:     80 * 1024 * 1024, // so the memory swap will be the same size
-		PidsLimit:  100,
+		Memory:     lang.GetMemory(), // so the memory swap will be the same size
+		PidsLimit:  lang.GetPidsLimit(),
 	})
 }
 
