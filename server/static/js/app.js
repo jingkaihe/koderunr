@@ -41,6 +41,9 @@ $(function() {
       case "c":
         mode = "c_cpp";
         break;
+      case "dotnet":
+        mode = "csharp";
+        break;
       default:
         mode = this.lang;
     }

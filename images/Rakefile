@@ -5,6 +5,7 @@ task :build do
   build_c
   build("ruby")
   build("python")
+  build_dotnet
 end
 
 def build_swift
@@ -17,6 +18,10 @@ end
 
 def build_go
   system "docker build --tag koderunr-go:1.7.0 go/"
+end
+
+def build_dotnet
+  system "docker build --tag koderunr-dotnet:1.0.0 dotnet/"
 end
 
 def build(lang)

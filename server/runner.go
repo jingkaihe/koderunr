@@ -174,7 +174,7 @@ var imageMapper = map[string]string{
 	"python": "koderunr-python",
 	"go":     "koderunr-go",
 	"c":      "koderunr-c",
-	"elixir": "koderunr-erl",
+	"dotnet": "koderunr-dotnet",
 }
 
 func (r *Runner) image() string {
@@ -201,7 +201,7 @@ func (r *Runner) createContainer(uuid string) error {
 			NetworkDisabled: true,
 			OpenStdin:       true,
 			Cmd:             cmd,
-			KernelMemory:    1024 * 1024 * 4,
+			KernelMemory:    1024 * 1024 * 8,
 		},
 	})
 
