@@ -6,6 +6,7 @@ task :build do
   build("ruby")
   build("python")
   build_dotnet
+  build_fsharp
 end
 
 def build_swift
@@ -22,6 +23,10 @@ end
 
 def build_dotnet
   system "docker build --tag koderunr-dotnet:1.0.0 dotnet/"
+end
+
+def build_fsharp
+  system "docker build --tag koderunr-fsharp:1.0.0 fsharp/"
 end
 
 def build(lang)

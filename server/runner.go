@@ -175,6 +175,7 @@ var imageMapper = map[string]string{
 	"go":     "koderunr-go",
 	"c":      "koderunr-c",
 	"dotnet": "koderunr-dotnet",
+	"fsharp": "koderunr-fsharp",
 }
 
 func (r *Runner) image() string {

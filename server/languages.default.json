@@ -19,5 +19,11 @@
     "CPUQuota": 40000,
     "Memory": 125829120,
     "PidsLimit": 10000
+  },
+  "fsharp": {
+    "Versions": ["1.0.0"],
+    "CPUQuota": 40000,
+    "Memory": 125829120,
+    "PidsLimit": 10000
   }
 }
