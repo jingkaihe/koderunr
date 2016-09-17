@@ -2,10 +2,12 @@
 set -e
 
 source_code=$1
-fname=runner.cs
+fname=Runner.cs
 
 touch $fname
 
 echo "$source_code" > $fname
 
-dotnet run $fname
+dotnet publish > /dev/null
+
+dotnet bin/Debug/netcoreapp1.0/publish/dotnet.dll
