@@ -10,6 +10,7 @@ type Config struct {
 	LanguagesFile     string `json:"languages_file"`
 	Static            bool   `json:"static"`
 	RunnerThrottleNum int    `json:"runner_throttle_num"`
+	Port              int    `json:"port"`
 	Languages         *Languages
 }
 

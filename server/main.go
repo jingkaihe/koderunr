@@ -21,5 +21,5 @@ func main() {
 	Runnerthrottle = make(chan struct{}, appConfig.RunnerThrottleNum)
 
 	s := NewServer(16, appConfig.Static)
-	s.Serve("/api/", 8080)
+	s.Serve("/api/", appConfig.Port)
 }

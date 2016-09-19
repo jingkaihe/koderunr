@@ -1,5 +1,6 @@
 {
   "languages_file": "./languages.default.json",
   "static": true,
-  "runner_throttle_num": 4
+  "runner_throttle_num": 4,
+  "port": 8080
 }
