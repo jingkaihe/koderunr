@@ -1,23 +1,30 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strconv"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/Sirupsen/logrus"
-	"github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	dcli "github.com/docker/docker/client"
 	"github.com/garyburd/redigo/redis"
 )
 
 // DockerClient for running code
-var DockerClient *docker.Client
+var DockerClient *dcli.Client
 
 // DockerAPIVersion is the API version connect to docker
-const DockerAPIVersion = "1.23"
+const DockerAPIVersion = "1.24"
 
 // Runner runs the code
 type Runner struct {
@@ -76,7 +83,9 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 		r.logger.Errorf("Container %s cannot be started - %v", uuid, err)
 		return
 	}
-	defer DockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: r.containerID, Force: true})
+	defer DockerClient.ContainerRemove(context.Background(), r.containerID, types.ContainerRemoveOptions{
+		Force: true,
+	})
 
 	successChan := make(chan struct{})
 	errorChan := make(chan error)
@@ -92,7 +101,7 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 
 	select {
 	case <-r.closeNotifier:
-		DockerClient.StopContainer(r.containerID, 0)
+		DockerClient.ContainerStop(context.Background(), r.containerID, nil)
 		r.logger.Infof("Container %s is stopped since the streamming has been halted", uuid)
 	case <-successChan:
 		r.logger.Infof("Container %s is executed successfully", uuid)
@@ -154,18 +163,9 @@ func pipeStdout(stdout *io.PipeReader, output messages, logger *logrus.Logger) {
 }
 
 // NewDockerClient create a new docker client
-func NewDockerClient() (*docker.Client, error) {
-	dockerHost := os.Getenv("DOCKER_HOST")
-
-	// If DOCKER_HOST exists in env, using docker-machine
-	if dockerHost != "" {
-		return docker.NewVersionedClientFromEnv(DockerAPIVersion)
-	}
-
-	// Otherwise using sock connection
-	//TODO: Deal with the TLS case (even though you are not using it for now)
-	endpoint := "unix:///var/run/docker.sock"
-	return docker.NewVersionedClient(endpoint, DockerAPIVersion)
+func NewDockerClient() (*dcli.Client, error) {
+	os.Setenv("DOCKER_API_VERSION", DockerAPIVersion)
+	return dcli.NewEnvClient()
 }
 
 var imageMapper = map[string]string{
@@ -193,54 +193,92 @@ func (r *Runner) image() string {
 }
 
 func (r *Runner) createContainer(uuid string) error {
-	cmd := []string{r.Source, uuid}
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
 
-	container, err := DockerClient.CreateContainer(docker.CreateContainerOptions{
-		Name: uuid,
-		Config: &docker.Config{
-			Image:           r.image(),
-			NetworkDisabled: true,
-			OpenStdin:       true,
+	cmd := []string{r.Source, uuid}
+	lang := (*appConfig.Languages)[r.Lang]
+
+	ctr, err := DockerClient.ContainerCreate(ctx,
+		&container.Config{
 			Cmd:             cmd,
-			KernelMemory:    1024 * 1024 * 8,
+			Image:           r.image(),
+			OpenStdin:       true,
+			AttachStdin:     true,
+			AttachStdout:    true,
+			AttachStderr:    true,
+			NetworkDisabled: true,
 		},
+		&container.HostConfig{
+			Privileged: false,
+			CapDrop:    []string{"all"},
+			Resources: container.Resources{
+				CPUQuota:   lang.GetCPUQuota(),
+				MemorySwap: -1,
+				Memory:     lang.GetMemory(),
+				PidsLimit:  lang.GetPidsLimit(),
+			},
+		},
+		&network.NetworkingConfig{},
+		uuid,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	r.containerID = ctr.ID
+	return nil
+}
+
+func (r *Runner) startContainer() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	return DockerClient.ContainerStart(ctx, r.containerID, types.ContainerStartOptions{})
+
+}
+
+func (r *Runner) attachContainer(stdoutWriter *io.PipeWriter, stdinReader *io.PipeReader) error {
+	hijackResp, err := DockerClient.ContainerAttach(context.Background(), r.containerID, types.ContainerAttachOptions{
+		Stdin:  true,
+		Stdout: true,
+		Stderr: true,
+		Stream: true,
 	})
 
 	if err != nil {
 		return err
 	}
 
-	r.containerID = container.ID
+	go func(reader *bufio.Reader) {
+		for {
+			io.Copy(stdoutWriter, reader)
+			if err != nil {
+				if err != io.EOF {
+					r.logger.Error(err)
+				}
+				break
+			}
+		}
+	}(hijackResp.Reader)
+
+	go func(writer net.Conn) {
+		scanner := bufio.NewScanner(stdinReader)
+		for scanner.Scan() {
+			fmt.Fprintf(writer, "%s\n", scanner.Text())
+		}
+	}(hijackResp.Conn)
+
 	return nil
 }
 
-func (r *Runner) startContainer() error {
-	lang := (*appConfig.Languages)[r.Lang]
-	return DockerClient.StartContainer(r.containerID, &docker.HostConfig{
-		CPUQuota:   lang.GetCPUQuota(),
-		MemorySwap: -1,
-		Privileged: false,
-		CapDrop:    []string{"all"},
-		Memory:     lang.GetMemory(), // so the memory swap will be the same size
-		PidsLimit:  lang.GetPidsLimit(),
-	})
-}
-
-func (r *Runner) attachContainer(stdoutWriter *io.PipeWriter, stdinReader *io.PipeReader) error {
-	return DockerClient.AttachToContainer(docker.AttachToContainerOptions{
-		Container:    r.containerID,
-		Stdin:        true,
-		Stdout:       true,
-		Stderr:       true,
-		Stream:       true,
-		OutputStream: stdoutWriter,
-		ErrorStream:  stdoutWriter,
-		InputStream:  stdinReader,
-	})
-}
-
 func (r *Runner) waitContainer(successChan chan<- struct{}, errorChan chan<- error) {
-	_, err := DockerClient.WaitContainer(r.containerID)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(r.Timeout)*time.Second)
+	defer cancel()
+
+	_, err := DockerClient.ContainerWait(ctx, r.containerID)
+
 	if err != nil {
 		r.logger.Error(err)
 		errorChan <- err
