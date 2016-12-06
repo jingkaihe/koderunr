@@ -304,10 +304,13 @@ func (r *Runner) waitContainer(output messages, wctx WaitCtx) {
 		DockerClient.ContainerStop(context.Background(), r.containerID, nil)
 		r.logger.Infof("Container %s is stopped since the streamming has been halted", r.shortContainerID())
 	case <-wctx.Done():
-		if wctx.Err() != nil {
-			msg := fmt.Sprintf("Container %s is terminated caused by 15 sec timeout\n", r.shortContainerID())
+		switch wctx.Err() {
+		case context.DeadlineExceeded:
+			msg := fmt.Sprintf("Container %s is terminated caused by %d sec timeout\n", r.shortContainerID(), r.Timeout)
 			r.logger.Error(msg)
 			output <- msg
+		default:
+			r.logger.Error(wctx.Err())
 		}
 	}
 }
