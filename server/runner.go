@@ -257,13 +257,10 @@ func (r *Runner) attachContainer(stdoutWriter *io.PipeWriter, stdinReader *io.Pi
 	}
 
 	go func(reader *bufio.Reader) {
-		for {
-			io.Copy(stdoutWriter, reader)
-			if err != nil {
-				if err != io.EOF {
-					r.logger.Error(err)
-				}
-				break
+		io.Copy(stdoutWriter, reader)
+		if err != nil {
+			if err != io.EOF {
+				r.logger.Error(err)
 			}
 		}
 	}(hijackResp.Reader)
