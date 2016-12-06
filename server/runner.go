@@ -40,6 +40,32 @@ type Runner struct {
 // Runnerthrottle Limit the max throttle for runner
 var Runnerthrottle chan struct{}
 
+// WaitCtx is the context for the container wait
+type WaitCtx struct {
+	context.Context
+	Cancel context.CancelFunc
+}
+
+func newWaitCtx(r *Runner) WaitCtx {
+	ctx := context.WithValue(context.Background(), "close", r.closeNotifier)
+	ctx = context.WithValue(ctx, "succeed", make(chan struct{}))
+
+	wctx := WaitCtx{}
+	wctx.Context, wctx.Cancel = context.WithTimeout(ctx, time.Duration(r.Timeout)*time.Second)
+
+	return wctx
+}
+
+// ChSucceed delivers the message that the context's been finished successfully
+func (w WaitCtx) ChSucceed() chan struct{} {
+	return w.Value("succeed").(chan struct{})
+}
+
+// ChClose deliver the message that the context's forced to be closed
+func (w WaitCtx) ChClose() <-chan bool {
+	return w.Value("close").(<-chan bool)
+}
+
 // FetchCode get the code from Redis Server according to the UUID
 func FetchCode(uuid string, redisConn redis.Conn) (r *Runner, err error) {
 	value, err := redis.Bytes(redisConn.Do("GET", uuid+"#run"))
@@ -77,10 +103,17 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 	go pipeStdin(conn, uuid, stdinWriter, r.logger)
 	go pipeStdout(stdoutReader, output, r.logger)
 
+	go func(r *Runner, uuid string) {
+		err = r.attachContainer(stdoutWriter, stdinReader)
+		if err != nil {
+			r.logger.Errorf("Container %s cannot be attached - %v", r.shortContainerID(), err)
+		}
+	}(r, uuid)
+
 	// Start running the container
 	err = r.startContainer()
 	if err != nil {
-		r.logger.Errorf("Container %s cannot be started - %v", uuid, err)
+		r.logger.Errorf("Container %s cannot be started - %v", r.shortContainerID(), err)
 		return
 	}
 	defer func() {
@@ -91,32 +124,7 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 		r.logger.Infof("Container %s removed successfully", r.containerID)
 	}()
 
-	go func(r *Runner, uuid string) {
-		err = r.attachContainer(stdoutWriter, stdinReader)
-		if err != nil {
-			r.logger.Errorf("Container %s cannot be attached - %v", uuid, err)
-		}
-	}(r, uuid)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(r.Timeout)*time.Second)
-	defer cancel()
-
-	if r.waitContainer(ctx) == nil {
-		r.logger.Infof("Container %s is executed successfully", uuid)
-		return
-	}
-
-	select {
-	case <-r.closeNotifier:
-		DockerClient.ContainerStop(context.Background(), r.containerID, nil)
-		r.logger.Infof("Container %s is stopped since the streamming has been halted", uuid)
-	case <-ctx.Done():
-		if ctx.Err() != nil {
-			msg := fmt.Sprintf("Container %s is terminated caused by 15 sec timeout\n", uuid)
-			r.logger.Error(msg)
-			output <- msg
-		}
-	}
+	r.waitContainer(output, newWaitCtx(r))
 }
 
 func pipeStdin(conn redis.Conn, uuid string, stdin *io.PipeWriter, logger *logrus.Logger) {
@@ -275,8 +283,31 @@ func (r *Runner) attachContainer(stdoutWriter *io.PipeWriter, stdinReader *io.Pi
 	return nil
 }
 
-func (r *Runner) waitContainer(ctx context.Context) error {
-	_, err := DockerClient.ContainerWait(ctx, r.containerID)
+func (r *Runner) shortContainerID() string {
+	return r.containerID[:7]
+}
 
-	return err
+func (r *Runner) waitContainer(output messages, wctx WaitCtx) {
+	defer wctx.Cancel()
+
+	go func() {
+		_, err := DockerClient.ContainerWait(wctx, r.containerID)
+		if err == nil {
+			wctx.ChSucceed() <- struct{}{}
+		}
+	}()
+
+	select {
+	case <-wctx.ChSucceed():
+		r.logger.Infof("Container %s is executed successfully", r.shortContainerID())
+	case <-wctx.ChClose():
+		DockerClient.ContainerStop(context.Background(), r.containerID, nil)
+		r.logger.Infof("Container %s is stopped since the streamming has been halted", r.shortContainerID())
+	case <-wctx.Done():
+		if wctx.Err() != nil {
+			msg := fmt.Sprintf("Container %s is terminated caused by 15 sec timeout\n", r.shortContainerID())
+			r.logger.Error(msg)
+			output <- msg
+		}
+	}
 }
