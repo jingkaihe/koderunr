@@ -83,14 +83,13 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 		r.logger.Errorf("Container %s cannot be started - %v", uuid, err)
 		return
 	}
-	defer DockerClient.ContainerRemove(context.Background(), r.containerID, types.ContainerRemoveOptions{
-		Force: true,
-	})
-
-	successChan := make(chan struct{})
-	errorChan := make(chan error)
-
-	go r.waitContainer(successChan, errorChan)
+	defer func() {
+		r.logger.Infof("Removing container %s", r.containerID)
+		DockerClient.ContainerRemove(context.Background(), r.containerID, types.ContainerRemoveOptions{
+			Force: true,
+		})
+		r.logger.Infof("Container %s removed successfully", r.containerID)
+	}()
 
 	go func(r *Runner, uuid string) {
 		err = r.attachContainer(stdoutWriter, stdinReader)
@@ -99,18 +98,24 @@ func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
 		}
 	}(r, uuid)
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(r.Timeout)*time.Second)
+	defer cancel()
+
+	if r.waitContainer(ctx) == nil {
+		r.logger.Infof("Container %s is executed successfully", uuid)
+		return
+	}
+
 	select {
 	case <-r.closeNotifier:
 		DockerClient.ContainerStop(context.Background(), r.containerID, nil)
 		r.logger.Infof("Container %s is stopped since the streamming has been halted", uuid)
-	case <-successChan:
-		r.logger.Infof("Container %s is executed successfully", uuid)
-	case err := <-errorChan:
-		r.logger.Errorf("Container %s failed caused by - %v", uuid, err)
-	case <-time.After(time.Duration(r.Timeout) * time.Second):
-		msg := fmt.Sprintf("Container %s is terminated caused by 15 sec timeout\n", uuid)
-		r.logger.Error(msg)
-		output <- msg
+	case <-ctx.Done():
+		if ctx.Err() != nil {
+			msg := fmt.Sprintf("Container %s is terminated caused by 15 sec timeout\n", uuid)
+			r.logger.Error(msg)
+			output <- msg
+		}
 	}
 }
 
@@ -273,16 +278,8 @@ func (r *Runner) attachContainer(stdoutWriter *io.PipeWriter, stdinReader *io.Pi
 	return nil
 }
 
-func (r *Runner) waitContainer(successChan chan<- struct{}, errorChan chan<- error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(r.Timeout)*time.Second)
-	defer cancel()
-
+func (r *Runner) waitContainer(ctx context.Context) error {
 	_, err := DockerClient.ContainerWait(ctx, r.containerID)
 
-	if err != nil {
-		r.logger.Error(err)
-		errorChan <- err
-		return
-	}
-	successChan <- struct{}{}
+	return err
 }
