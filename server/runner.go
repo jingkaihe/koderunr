@@ -265,7 +265,7 @@ func (r *Runner) attachContainer(stdoutWriter *io.PipeWriter, stdinReader *io.Pi
 	}
 
 	go func(reader *bufio.Reader) {
-		io.Copy(stdoutWriter, reader)
+		_, err := io.Copy(stdoutWriter, reader)
 		if err != nil {
 			if err != io.EOF {
 				r.logger.Error(err)
