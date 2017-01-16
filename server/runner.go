@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"strconv"
 	"time"
 
 	"golang.org/x/net/context"
@@ -17,6 +16,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	dcli "github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -80,98 +80,55 @@ func FetchCode(uuid string, redisConn redis.Conn) (r *Runner, err error) {
 }
 
 // Run the code in the container
-func (r *Runner) Run(output messages, conn redis.Conn, uuid string) {
+func (rnr *Runner) Run(r io.Reader, w io.Writer, conn redis.Conn, uuid string) {
 	Runnerthrottle <- struct{}{}
 	defer func() { <-Runnerthrottle }()
 
-	err := r.createContainer(uuid)
+	err := rnr.createContainer(uuid)
 	if err != nil {
-		r.logger.Errorf("Container %s cannot be created - %v", uuid, err)
+		rnr.logger.Errorf("Container %s cannot be created - %v", uuid, err)
 		return
 	}
 
-	stdoutReader, stdoutWriter := io.Pipe()
-	stdinReader, stdinWriter := io.Pipe()
+	hijackResp, err := DockerClient.ContainerAttach(context.Background(), rnr.containerID, types.ContainerAttachOptions{
+		Stdin:  true,
+		Stdout: true,
+		Stderr: true,
+		Stream: true,
+	})
 
 	if err != nil {
-		r.logger.Error(err)
+		rnr.logger.Errorf("Container %s cannot be attached - %v", rnr.shortContainerID(), err)
+		return
 	}
 
-	defer stdinWriter.Close()
-	defer stdoutWriter.Close()
-
-	go pipeStdin(conn, uuid, stdinWriter, r.logger)
-	go pipeStdout(stdoutReader, output, r.logger)
-
-	go func(r *Runner, uuid string) {
-		err = r.attachContainer(stdoutWriter, stdinReader)
-		if err != nil {
-			r.logger.Errorf("Container %s cannot be attached - %v", r.shortContainerID(), err)
-		}
-	}(r, uuid)
+	go pipeIn(hijackResp.Conn, r, rnr.logger)
+	go pipeOut(hijackResp.Reader, w, rnr.logger)
 
 	// Start running the container
-	err = r.startContainer()
+	err = rnr.startContainer()
 	if err != nil {
-		r.logger.Errorf("Container %s cannot be started - %v", r.shortContainerID(), err)
+		rnr.logger.Errorf("Container %s cannot be started - %v", rnr.shortContainerID(), err)
 		return
 	}
 	defer func() {
-		r.logger.Infof("Removing container %s", r.containerID)
-		DockerClient.ContainerRemove(context.Background(), r.containerID, types.ContainerRemoveOptions{
+		rnr.logger.Infof("Removing container %s", rnr.containerID)
+		DockerClient.ContainerRemove(context.Background(), rnr.containerID, types.ContainerRemoveOptions{
 			Force: true,
 		})
-		r.logger.Infof("Container %s removed successfully", r.containerID)
+		rnr.logger.Infof("Container %s removed successfully", rnr.containerID)
 	}()
 
-	r.waitContainer(output, newWaitCtx(r))
+	rnr.waitContainer(w, newWaitCtx(rnr))
 }
 
-func pipeStdin(conn redis.Conn, uuid string, stdin *io.PipeWriter, logger *logrus.Logger) {
-	psc := redis.PubSubConn{Conn: conn}
-	psc.Subscribe(uuid + "#stdin")
-
-	defer func() {
-		psc.Unsubscribe(uuid + "#stdin")
-		psc.Close()
-		conn.Close()
-	}()
-
-StdinSubscriptionLoop:
-	for {
-		switch n := psc.Receive().(type) {
-		case redis.Message:
-			stdinData := strconv.QuoteToASCII(string(n.Data))
-			logger.Infof("Message: %s %s", n.Channel, stdinData)
-			stdin.Write(n.Data)
-		case error:
-			break StdinSubscriptionLoop
-		}
-	}
-	logger.Info("Stdin subscription closed")
+func pipeIn(stdin net.Conn, r io.Reader, logger *logrus.Logger) {
+	io.Copy(stdin, r)
 }
 
-func pipeStdout(stdout *io.PipeReader, output messages, logger *logrus.Logger) {
-	buffer := make([]byte, 512)
-	for {
-		n, err := stdout.Read(buffer)
-		if err != nil {
-			if err != io.EOF {
-				stdout.Close()
-				logger.Error(err)
-			}
-
-			close(output)
-			break
-		}
-
-		data := buffer[0:n]
-		output <- string(data)
-
-		// Clear the buffer
-		for i := 0; i < n; i++ {
-			buffer[i] = 0
-		}
+func pipeOut(r *bufio.Reader, w io.Writer, logger *logrus.Logger) {
+	if _, err := stdcopy.StdCopy(w, w, r); err != nil {
+		logger.Error(err)
 	}
 }
 
@@ -191,9 +148,9 @@ var imageMapper = map[string]string{
 	"fsharp": "koderunr-fsharp",
 }
 
-func (r *Runner) image() string {
-	selectedVersion := r.Version
-	availableVersions := (*appConfig.Languages)[r.Lang].Versions
+func (rnr *Runner) image() string {
+	selectedVersion := rnr.Version
+	availableVersions := (*appConfig.Languages)[rnr.Lang].Versions
 
 	if selectedVersion == "" {
 		if len(availableVersions) > 0 {
@@ -202,20 +159,20 @@ func (r *Runner) image() string {
 			selectedVersion = "latest"
 		}
 	}
-	return fmt.Sprintf("%s:%s", imageMapper[r.Lang], selectedVersion)
+	return fmt.Sprintf("%s:%s", imageMapper[rnr.Lang], selectedVersion)
 }
 
-func (r *Runner) createContainer(uuid string) error {
+func (rnr *Runner) createContainer(uuid string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	cmd := []string{r.Source, uuid}
-	lang := (*appConfig.Languages)[r.Lang]
+	cmd := []string{rnr.Source, uuid}
+	lang := (*appConfig.Languages)[rnr.Lang]
 
 	ctr, err := DockerClient.ContainerCreate(ctx,
 		&container.Config{
 			Cmd:             cmd,
-			Image:           r.image(),
+			Image:           rnr.image(),
 			OpenStdin:       true,
 			AttachStdin:     true,
 			AttachStdout:    true,
@@ -240,58 +197,27 @@ func (r *Runner) createContainer(uuid string) error {
 		return err
 	}
 
-	r.containerID = ctr.ID
+	rnr.containerID = ctr.ID
 	return nil
 }
 
-func (r *Runner) startContainer() error {
+func (rnr *Runner) startContainer() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	return DockerClient.ContainerStart(ctx, r.containerID, types.ContainerStartOptions{})
+	return DockerClient.ContainerStart(ctx, rnr.containerID, types.ContainerStartOptions{})
 
 }
 
-func (r *Runner) attachContainer(stdoutWriter *io.PipeWriter, stdinReader *io.PipeReader) error {
-	hijackResp, err := DockerClient.ContainerAttach(context.Background(), r.containerID, types.ContainerAttachOptions{
-		Stdin:  true,
-		Stdout: true,
-		Stderr: true,
-		Stream: true,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	go func(reader *bufio.Reader) {
-		_, err := io.Copy(stdoutWriter, reader)
-		if err != nil {
-			if err != io.EOF {
-				r.logger.Error(err)
-			}
-		}
-	}(hijackResp.Reader)
-
-	go func(writer net.Conn) {
-		scanner := bufio.NewScanner(stdinReader)
-		for scanner.Scan() {
-			fmt.Fprintf(writer, "%s\n", scanner.Text())
-		}
-	}(hijackResp.Conn)
-
-	return nil
+func (rnr *Runner) shortContainerID() string {
+	return rnr.containerID[:7]
 }
 
-func (r *Runner) shortContainerID() string {
-	return r.containerID[:7]
-}
-
-func (r *Runner) waitContainer(output messages, wctx WaitCtx) {
+func (rnr *Runner) waitContainer(w io.Writer, wctx WaitCtx) {
 	defer wctx.Cancel()
 
 	go func() {
-		_, err := DockerClient.ContainerWait(wctx, r.containerID)
+		_, err := DockerClient.ContainerWait(wctx, rnr.containerID)
 		if err == nil {
 			wctx.ChSucceed() <- struct{}{}
 		}
@@ -299,18 +225,18 @@ func (r *Runner) waitContainer(output messages, wctx WaitCtx) {
 
 	select {
 	case <-wctx.ChSucceed():
-		r.logger.Infof("Container %s is executed successfully", r.shortContainerID())
+		rnr.logger.Infof("Container %s is executed successfully", rnr.shortContainerID())
 	case <-wctx.ChClose():
-		DockerClient.ContainerStop(context.Background(), r.containerID, nil)
-		r.logger.Infof("Container %s is stopped since the streamming has been halted", r.shortContainerID())
+		DockerClient.ContainerStop(context.Background(), rnr.containerID, nil)
+		rnr.logger.Infof("Container %s is stopped since the streamming has been halted", rnr.shortContainerID())
 	case <-wctx.Done():
 		switch wctx.Err() {
 		case context.DeadlineExceeded:
-			msg := fmt.Sprintf("Container %s is terminated caused by %d sec timeout\n", r.shortContainerID(), r.Timeout)
-			r.logger.Error(msg)
-			output <- msg
+			msg := fmt.Sprintf("Container %s is terminated caused by %d sec timeout\n", rnr.shortContainerID(), rnr.Timeout)
+			rnr.logger.Error(msg)
+			fmt.Fprintf(w, "%s\n", msg)
 		default:
-			r.logger.Error(wctx.Err())
+			rnr.logger.Error(wctx.Err())
 		}
 	}
 }

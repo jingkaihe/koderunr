@@ -1,12 +1,12 @@
 desc "build everything..."
 task :build do
-  # build_swift
-  # build_go
-  # build_c
+  build_swift
+  build_go
+  build_c
   build("ruby")
-  # build("python")
-  # build_dotnet
-  # build_fsharp
+  build("python")
+  build_dotnet
+  build_fsharp
 end
 
 def build_swift

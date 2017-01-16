@@ -96,6 +96,7 @@ func (s *Server) HandleRunCode(w http.ResponseWriter, r *http.Request) {
 	isEvtStream := r.FormValue("evt") == "true"
 	client := NewClient(runner, s.redisPool.Get(), uuid)
 
+	go client.Read()
 	go client.Write(w, isEvtStream)
 	client.Run()
 

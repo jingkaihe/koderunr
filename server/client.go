@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -14,25 +16,57 @@ type messages chan string
 
 // Client is a proxy struct registered for running
 type Client struct {
-	runner *Runner
-	output messages   // output from runner
-	conn   redis.Conn // redis connection
-	uuid   string
+	runner       *Runner
+	stdoutWriter io.Writer
+	stdoutReader io.Reader
+	stdinWriter  io.Writer
+	stdinReader  io.Reader
+	conn         redis.Conn // redis connection
+	uuid         string
 }
 
 // NewClient creates new client
 func NewClient(r *Runner, conn redis.Conn, uuid string) *Client {
+	stdoutReader, stdoutWriter := io.Pipe()
+	stdinReader, stdinWriter := io.Pipe()
 	return &Client{
-		output: make(messages),
-		runner: r,
-		conn:   conn,
-		uuid:   uuid,
+		stdoutReader: stdoutReader,
+		stdoutWriter: stdoutWriter,
+		stdinReader:  stdinReader,
+		stdinWriter:  stdinWriter,
+		runner:       r,
+		conn:         conn,
+		uuid:         uuid,
 	}
 }
 
 // Run kicks start the container
 func (cli *Client) Run() {
-	cli.runner.Run(cli.output, cli.conn, cli.uuid)
+	cli.runner.Run(cli.stdinReader, cli.stdoutWriter, cli.conn, cli.uuid)
+}
+
+func (cli *Client) Read() {
+	psc := redis.PubSubConn{Conn: cli.conn}
+	psc.Subscribe(cli.uuid + "#stdin")
+
+	defer func() {
+		psc.Unsubscribe(cli.uuid + "#stdin")
+		psc.Close()
+		cli.conn.Close()
+	}()
+
+StdinSubscriptionLoop:
+	for {
+		switch n := psc.Receive().(type) {
+		case redis.Message:
+			stdinData := strconv.QuoteToASCII(string(n.Data))
+			cli.runner.logger.Infof("Message: %s %s", n.Channel, stdinData)
+			cli.stdinWriter.Write(n.Data)
+		case error:
+			break StdinSubscriptionLoop
+		}
+	}
+	cli.runner.logger.Info("Stdin subscription closed")
 }
 
 // Writing things out
@@ -48,7 +82,16 @@ func (cli *Client) Write(w http.ResponseWriter, isEvtSource bool) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("X-Accel-Buffering", "no")
 
-	for msg := range cli.output {
+	buffer := make([]byte, 512)
+
+	for {
+		n, err := cli.stdoutReader.Read(buffer)
+		if err != nil {
+			break
+		}
+
+		msg := string(buffer[0:n])
+
 		if isEvtSource == true {
 			msg = cli.sseFormat(msg)
 		}
@@ -58,6 +101,11 @@ func (cli *Client) Write(w http.ResponseWriter, isEvtSource bool) {
 			return
 		}
 		f.Flush()
+
+		// Clear the buffer
+		for i := 0; i < n; i++ {
+			buffer[i] = 0
+		}
 	}
 
 	if isEvtSource == true {
